@@ -1,3 +1,6 @@
+source https://www.nuget.org/api/v2
+
+nuget Fulma.Extensions.Wikiki.Tooltip
 group Server
     source https://api.nuget.org/v3/index.json
     framework: netcoreapp2.2
@@ -19,6 +22,7 @@ group Client
     nuget Fable.Elmish.HMR ~> 2
     nuget Fable.React ~> 4
     nuget Fulma
+    nuget Fulma.Extensions.Wikiki.Tooltip
     nuget Fable.FontAwesome.Free
 
 group Build
@@ -30,4 +34,3 @@ group Build
     nuget Fake.Core.Target
     nuget Fake.DotNet.Cli
     nuget Fake.IO.FileSystem
-
