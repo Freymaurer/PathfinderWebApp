@@ -1,4 +1,4 @@
-﻿namespace PathfinderAttackSimulator
+namespace PathfinderAttackSimulator
 
 open System
 
@@ -494,7 +494,7 @@ module Library =
             }
 
         let BlessingOfFervorAttackBonus = {
-            Name = "Blessing of Fervor"
+            Name = "Blessing of Fervor (Attack Bonus)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 2 Flat 0 Flat
             BonusDamage = createBonus 2 Flat
@@ -507,7 +507,7 @@ module Library =
         
         /// use this modification to add fast and easy flat boni to attack rolls or to damage.
         let BonusAttackDamage attack damage= {
-            Name = "Blessing of Fervor"
+            Name = "Variable Bonus For Attack And Damage"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit attack Flat 0 Flat
             BonusDamage = createBonus damage Flat
@@ -519,7 +519,7 @@ module Library =
             }
 
         let Charging = {
-            Name = "Charge-Attack"
+            Name = "Charge"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 2 Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -527,7 +527,7 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "+2 on attack rolls"
             }
 
         let CriticalFocus = {
@@ -665,11 +665,11 @@ module Library =
             AppliedTo = [|Secondary|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Gives all secondary attacks +3 on attack rolls, effectively reducing the attack penality for secondary attacks to -2"
             }
 
         let MutagenStrength = {
-            Name = "Strength Mutagen"
+            Name = "Mutagen, Alchemist (Strength)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -683,7 +683,7 @@ module Library =
         let PlanarFocusFire (lvl:int) = 
             let NumberOfExtraDie = int (lvl/4) + 1 
             {
-            Name = "Planar Focus"
+            Name = "Planar Focus (Fire)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -703,11 +703,11 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Takes BAB as input."
             }
         
         let PowerAttackURL (handed:WeaponHanded) bab= {
-            Name = "Power Attack"
+            Name = "Power Attack (For Bestiary Calculator)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (int( - (floor (float bab/4. + 1.)) )) Flat 0 Flat
             BonusDamage = (floor (float bab/4.) * 2.) + 2. 
@@ -719,7 +719,7 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = "Use this only for the calculateURLAttack function"
+            Description = "Takes OneHanded/TwoHanded/OffHanded and BAB as input. Use this only for the calculateURLAttack function."
             }        
     
         let Shaken = {
@@ -735,7 +735,7 @@ module Library =
             }
 
         let ShockingGrasp casterLevel metalTF = {
-            Name = "Intensified Empowered Shocking Grasp"
+            Name = "Shocking Grasp"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (if metalTF = true then 3 else 0) Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -747,7 +747,7 @@ module Library =
             }
 
         let ShockingGraspIntensifiedEmpowered casterLevel metalTF = {
-            Name = "Intensified Empowered Shocking Grasp"
+            Name = "Shocking Grasp Intensified Empowered"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (if metalTF = true then 3 else 0) Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -774,7 +774,7 @@ module Library =
             }
 
         let SneakAttackOnce rogueLevel = {
-            Name = "Sneak Attack"
+            Name = "Sneak Attack (Once)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
             BonusDamage = createBonus 0 BonusTypes.Flat
@@ -787,7 +787,7 @@ module Library =
 
         ///mit allen als Primary gelisteten Waffen; bisher nur mit -2 auf Treffen
         let TwoWeaponFighting = {
-            Name = "Two-Weapon-Fighting"
+            Name = "Two-Weapon Fighting"
             BonusAttacks = createBonusAttacks 1 TWFLike Primary
             BonusAttackRoll = createAttackBoniHitAndCrit -2 TwoWeaponFightingMalus 0 Flat
             BonusDamage = createBonus 0 BonusTypes.Flat
@@ -795,12 +795,12 @@ module Library =
             AppliedTo = [|Primary; PrimaryMain|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Gives -2 to all attacks."
             }    
 
         /// mit allen als Primary gelisteten Waffen; bisher nur mit -2 auf Treffen
         let TwoWeaponFightingImproved = {
-            Name = "Improved Two-Weapon-Fighting"
+            Name = "Two-Weapon Fighting, Improved"
             BonusAttacks = createBonusAttacks 2 TWFLike Primary
             BonusAttackRoll = createAttackBoniHitAndCrit -2 TwoWeaponFightingMalus 0 Flat
             BonusDamage = createBonus 0 BonusTypes.Flat
@@ -808,7 +808,7 @@ module Library =
             AppliedTo = [|Primary; PrimaryMain|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Gives -2 to all attacks."
             }
 
         /// This modification is hardcoded, so it does not follow normal modification rules
@@ -826,7 +826,7 @@ module Library =
             
         /// This modification is hardcoded, so it does not follow normal modification rules
         let VitalStrikeImproved = {
-            Name = "Improved Vital Strike"
+            Name = "Vital Strike, Improved"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -839,7 +839,7 @@ module Library =
 
         /// This modification is hardcoded, so it does not follow normal modification rules
         let VitalStrikeGreater = {
-            Name = "Vital Strike"
+            Name = "Vital Strike, Greater"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
             BonusDamage = createBonus 0 Flat
@@ -871,7 +871,7 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Only use this if you only use one weapon."
             }
 
         let Wrath = {
@@ -959,9 +959,10 @@ module Library =
                 CasterLevel1 = 0
                 CasterLevel2 = 0
                 }
-    
+
+        /// use this one as empty char for web application as he has an empty string as name
         let EmptyChar = { 
-                CharacterName = createStringForLib ""
+                CharacterName = ""
                 BAB = 0
                 Strength = 0
                 Dexterity = 0

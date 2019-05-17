@@ -26,13 +26,23 @@ open Fulma.Extensions.Wikiki
 open Fable.Import
 open Fable.Import
 open Fable.Import
+open Fable.Import
+open Fable.Import
+open System.Diagnostics.Tracing
 
 
 let exmpCharArr = [|Characters.myParrn; Characters.myTumor; Characters.myElemental;|] |> Array.sort
 let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn|] |> Array.sort
 let ModificationArr = [|Modifications.Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus|] |> Array.sort
 let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] |> Array.sortBy (fun x -> (x 0).Name)
-   
+let testArr = [|
+                Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
+                Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
+                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
+                BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
+              |] |> Array.sortBy (fun x -> x.Name)
+
+
 let sorensenCoefficent (str1:string) (str2:string) =
     let charSeq1 = str1.ToCharArray()
     let charSeq2 = str2.ToCharArray()
@@ -69,23 +79,29 @@ let searchForCharacters (arr: CharacterStats []) (searchForStr:string)=
     |> Array.map (fun x -> sorensenCoefficent x.CharacterName searchForStr,x)
     |> Array.sortByDescending (fun (score,characterSt) -> score)
     |> Array.truncate 5
-    |> Array.filter (fun (score,x) -> score > 0.5)
+    |> Array.filter (fun (score,x) -> score > 0.2)
     |> Array.map snd
 
 let searchForModifications (arr: AttackModification []) (searchForStr:string)=
-    arr
-    |> Array.map (fun x -> sorensenCoefficent x.Name searchForStr,x)
+    let (garantiedHits,restArr) = arr
+                                  |> Array.mapi (fun i x ->i, x.Name.Contains(searchForStr) )
+                                  |> Array.filter (fun x -> snd x = true)
+                                  |> fun x -> Array.map (fun foundHit -> arr.[fst foundHit]) x, Array.except (Array.map (fun foundHit -> arr.[fst foundHit]) x) arr
+    restArr
+    |> Array.map (fun x -> sorensenCoefficent x.Name searchForStr
+                           ,x)
     |> Array.sortByDescending (fun (score,characterSt) -> score)
-    |> Array.truncate 5
-    |> Array.filter (fun (score,x) -> score > 0.5)
+    |> Array.filter (fun (score,x) -> score > 0.2) 
     |> Array.map snd
+    |> Array.append garantiedHits
+    |> Array.truncate 5
 
 let searchForWeapons (arr: Weapon []) (searchForStr:string)=
     arr
     |> Array.map (fun x -> sorensenCoefficent x.Name searchForStr,x)
     |> Array.sortByDescending (fun (score,characterSt) -> score)
     |> Array.truncate 5
-    |> Array.filter (fun (score,x) -> score > 0.5)
+    |> Array.filter (fun (score,x) -> score > 0.2)
     |> Array.map snd
 
 type SubTabsSearchBars = {
@@ -112,6 +128,20 @@ let createSearchResult searchResultChar searchResultWea searchResultModi= {
     SearchResultModifications = searchResultModi
     }
 
+type ActiveModifiers = {
+    ActiveCharacter     : CharacterStats
+    ActiveSize          : SizeType
+    ActiveWeapons       : Weapon list
+    ActiveModifications : AttackModification list
+    }
+
+let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
+    ActiveCharacter     = activeChar
+    ActiveSize          = activeSize
+    ActiveWeapons       = activeWeapons
+    ActiveModifications = activeModi
+    }
+
 // The model holds data that you want to keep track of while the application is running
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
@@ -125,6 +155,7 @@ type Model = {
     TabList: (int*Fable.Import.React.ReactElement) list
     SearchBarList: (int*SubTabsSearchBars) list
     SearchResultList : (int*SearchResult) list
+    ActiveModifierList : (int * ActiveModifiers) list
     IDCounter : int
     }
 
@@ -138,10 +169,21 @@ type Msg =
 | CalculateStandardAttackAction of CharacterStats * Weapon list * AttackModification list
 | CalculateFullRoundAttackAction of CharacterStats * Weapon list * AttackModification list
 | AddTabToTabList of (Fable.Import.React.ReactElement)
+| UpdateSearchBarList of int * int * string
+| UpdateSearchResultList of int * int
+| UpdateActiveModifierList of int * int * string
 | CloseTab of int
-| UpdateSearchBarTabs of int * int * string
-| UpdateSearchResult of int * int
 
+let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
+    Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
+                    Button.OnClick (fun _ -> dispatch (UpdateActiveModifierList (id,intForWhichTab,searchForName)
+                                                      )
+                                   )
+                    Button.Color IsSuccess; Button.IsInverted
+                  ]
+                  [ str (sprintf "add %s" searchForName)]
+
+//<button class="button is-success is-inverted" id="Button01">add Parrn</button>
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
@@ -154,6 +196,7 @@ let init () : Model * Cmd<Msg> =
         TabList = []
         SearchBarList = []
         SearchResultList = []
+        ActiveModifierList = []
         IDCounter = 0
         }
 
@@ -202,6 +245,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 IDCounter = currentModel.IDCounter+1
                 SearchBarList = (currentModel.IDCounter,createSubTabsSearchBars "" "" "")::currentModel.SearchBarList
                 SearchResultList = (currentModel.IDCounter,createSearchResult [||] [||] [||])::currentModel.SearchResultList
+                ActiveModifierList = (currentModel.IDCounter, createActiveModifiers EmptyChar Medium [] [])::currentModel.ActiveModifierList
             }
         nextModel,Cmd.none
     | _, CloseTab (id) ->
@@ -210,9 +254,10 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 TabList = List.except [currentModel.TabList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabList).Value] currentModel.TabList
                 SearchBarList = List.except [currentModel.SearchBarList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.SearchBarList).Value] currentModel.SearchBarList
                 SearchResultList = List.except [currentModel.SearchResultList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.SearchResultList).Value] currentModel.SearchResultList
+                ActiveModifierList = List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value] currentModel.ActiveModifierList
             }
         nextModel,Cmd.none     
-    | _, UpdateSearchBarTabs (id,intForWhichTab,input) ->
+    | _, UpdateSearchBarList (id,intForWhichTab,input) ->
          let nextModel = {
             currentModel with
                 SearchBarList = ( (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.SearchBarList)
@@ -229,7 +274,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                 )
             }   
          nextModel,Cmd.none
-    | _, UpdateSearchResult (id,intForWhichTab) ->
+    | _, UpdateSearchResultList (id,intForWhichTab) ->
          let tabCategory =
             match intForWhichTab with
             | 1 -> "characters"
@@ -271,7 +316,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
              match intForWhichTab with
              | 1 -> ((searchForCharacters exmpCharArr searchInput) |> Array.map (fun x -> x.CharacterName,"a nice guy","here will be a button") )
              | 2 -> ((searchForWeapons exmpWeaponArr searchInput) |> Array.map (fun x -> x.Name,x.Description,"here will be a button") )
-             | 3 -> ((searchForModifications ModificationArr searchInput) |> Array.map (fun x -> x.Name,x.Description,"here will be a button") )
+             | 3 -> ((searchForModifications testArr searchInput) |> Array.map (fun x -> x.Name,x.Description,"here will be a button") )
              | _ -> failwith "unknown case, you should not get this 004"                                   
             filter
             |> Array.map (fun (name,desc,button) -> sprintf "<tr>
@@ -286,10 +331,44 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
          }
          hugeTest.innerHTML <- (sprintf "%A" newSearchResultListTable)
          nextModel,Cmd.none
+    | _, UpdateActiveModifierList (id,intForWhichTab,searchForString) ->
+        let activeModifierMatchedID =
+            List.tryFind ( fun (index,values) -> index = id) currentModel.ActiveModifierList
+            |> fun x -> snd x.Value
+        let searchCharArr (str:string)=
+            exmpCharArr
+            |> Array.tryFind (fun x -> x.CharacterName = str)
+            |> fun x -> if x.IsNone then failwith "Error 005" else x.Value
+        let searchWeaponArr (str:string)=
+            exmpWeaponArr
+            |> Array.tryFind (fun x -> x.Name = str)
+            |> fun x -> if x.IsNone then failwith "Error 006" else x.Value
+        let searchModificationArr (str:string)=
+            ModificationArr
+            |> Array.tryFind (fun x -> x.Name = str)
+            |> fun x -> if x.IsNone then failwith "Error 007" else x.Value //only works for non function Modifications
+        let updatedModifiers =
+            match intForWhichTab with
+            | 1 -> (searchCharArr searchForString)
+                   |> fun x -> let outputChar = (Browser.document.getElementById (sprintf "OutputCharacter%i" id))
+                               outputChar.innerHTML <- x.CharacterName
+                               createActiveModifiers x activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
+            | 2 -> (searchWeaponArr searchForString)
+                   |> fun x -> let outputWeapon = (Browser.document.getElementById (sprintf "OutputWeapons%i" id))
+                               outputWeapon.innerHTML <- (outputWeapon.innerHTML + ", " + x.Name)
+                               createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize (x::activeModifierMatchedID.ActiveWeapons) activeModifierMatchedID.ActiveModifications
+            | 3 -> (searchModificationArr searchForString)
+                   |> fun x -> let outputModifications = (Browser.document.getElementById (sprintf "OutputModifications%i" id))
+                               outputModifications.innerHTML <- (outputModifications.innerHTML + ", " + x.Name)
+                               createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons (x::activeModifierMatchedID.ActiveModifications)
+            | _ -> failwith "Error 008"
+        let nextModel = {
+            currentModel with
+                ActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value] currentModel.ActiveModifierList)
+            }
+        nextModel,Cmd.none
     
     | _ -> currentModel, Cmd.none
-
-
 
 let safeComponents =
     let components =
@@ -404,7 +483,7 @@ let DropDownModifications (model:Model) (dispatch : Msg -> unit) =
               ]
           Dropdown.menu
             [ ]
-            [ Dropdown.content [ Props [ Style [CSSProp.MaxHeight "250px"; (*CSSProp.OverflowY "scroll"; CSSProp.OverflowX "Visible"*)] ]
+            [ Dropdown.content [ Props [ Style [CSSProp.MaxHeight "250px"] ]
                                ]
                               ([  
                                   ( VarModificationArr
@@ -436,7 +515,7 @@ let DropDownModifications (model:Model) (dispatch : Msg -> unit) =
                                                                     Button.Props [ Tooltip.dataTooltip (str (sprintf "%A" x.Description))
                                                                                    Style [ Width "300px" ] 
                                                                                     ]
-                                                                    Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsMultiline (*+ " " + Tooltip.IsTooltipLeft*) ) 
+                                                                    Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsMultiline ) 
                                                                   ]
                                                                   [ str (sprintf "%A" x.Name) ]
                                                     )
@@ -542,6 +621,7 @@ let doHide (tabId:string) (cardID:int) =
     let x = Browser.document.getElementById(sprintf "%A%i" tabId cardID)
     x.style.display <- "none"
 
+
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string)=
 
     Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display "none"]
@@ -562,7 +642,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string)=
                                                                                                                                | "weapons" -> 2
                                                                                                                                | "modifications" -> 3
                                                                                                                                | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                           dispatch (UpdateSearchBarTabs (id,getIntForTabCategory,x))
+                                                                                                                           dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
                                                                                                                  ) 
                                                                                                 ] 
                                                                                    ]
@@ -573,7 +653,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string)=
                                                                                                                                   | "weapons" -> 2
                                                                                                                                   | "modifications" -> 3
                                                                                                                                   | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                              dispatch (UpdateSearchResult (id, getIntForTabCategory))
+                                                                                                                              dispatch (UpdateSearchResultList (id, getIntForTabCategory))
 
                                                                                                                     )
                                                                                                    ]
@@ -611,7 +691,13 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) =
             [ Card.Header.title [ Card.Header.Title.IsCentered ]
                                 [ str "Attack Calculator" ]
               Button.button [ Button.Color IsWhite
-                              Button.OnClick (fun _ -> doHideShow "TabMainInfo" id)
+                              Button.OnClick (fun _ -> doHideShow "TabMainInfo" id
+                                                       doHideShow "TabMainOutput" id
+                                                       doHide "Tabcharacters" id
+                                                       doHide "Tabsize" id
+                                                       doHide "Tabweapons" id
+                                                       doHide "Tabmodifications" id
+                                             )
                               Button.Props [ Tooltip.dataTooltip "hide/show card" ]
                               Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
                             ]
@@ -627,9 +713,21 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) =
                                         [ i [ClassName "fa fa-times-circle"] [] ]
                             ]
             ]
+          Card.content [ Props [ Props.Id (sprintf "TabMainOutput%A" id); Props.Style [CSSProp.Display "none"] ] ]
+                       [ Container.container [ Container.IsFluid ]
+                                             [ h1 [ Props.Id (sprintf "OutputCharacter%A" id) ]
+                                                  [ str "Here will be your CharacterName" ]
+                                               p [ Props.Id (sprintf "OutputSize%A" id) ]
+                                                 [ str "Here will be your Size" ]
+                                               p [ Props.Id (sprintf "OutputWeapons%A" id) ]
+                                                 [ str "Here will be your Weapons" ]
+                                               p [ Props.Id (sprintf "OutputModifications%A" id) ]
+                                                 [ str "Here will be your Modifications" ] 
+                                             ]
+                       ]
           Card.content [ Props [ Props.Id (sprintf "TabMainInfo%A" id); Props.Style [CSSProp.Display "none"] ] ]
-                       [ Content.content [ ]
-                                         [ str "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec iaculis mauris." ]
+                       [ Notification.notification [ Notification.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered)] ]
+                                                   [ str "Here will be your result! Try it out!" ]
                          Level.level [ ]
                                      [ Level.item [ Level.Item.HasTextCentered ]
                                          [ div [ ]
@@ -731,27 +829,52 @@ let view (model : Model) (dispatch : Msg -> unit) =
                             [ safeComponents ] ] ]
               ]
             Container.container [ Container.IsFluid ]
-                                [ Content.content []
-                                                  [ Button.button [ Button.Color IsWhite
-                                                                    Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
-                                                                                                      )
-                                                                                   )
-                                                                  ]   
-                                                                  [ str "Open new Attack Calculator tab"] 
-                                                    Content.content [ ]
-                                                                    (List.map (fun (index,tab) -> tab) model.TabList)
+                                [ Heading.p [ ]
+                                            [ Button.button [ Button.Color IsWhite
+                                                              Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
+                                                                                                )
+                                                                             )
+                                                            ]
+                                                            [ str "Open new Attack Calculator tab"] 
+                                            ]
+                                  Content.content []
+                                                  [ Content.content [ ]
+                                                                    (List.map (fun (index,tab) -> tab) (List.sortByDescending fst model.TabList))
                                                   ]              
                                 ]
-
+            //createInsertButton 0 1 "Parrn" dispatch
+            //Card.card [ GenericOption.Props [ Props.Id "TestMe" ] ]
+            //          [Button.button []
+            //                [str "test me"]
+            //          ]
+            //Button.button [ Button.OnClick (fun _ -> let x = (Browser.document.getElementById "TestMe")
+            //                                         x.innerHTML <- "<button onclick=\"createInsertButton(0,1,\"Parr\",dispatch)\">add Parrn</button>
+            //                                                         <script>
+            //                                                         export function createInsertButton(id$$1, intForWhichTab, searchForName, dispatch) {
+            //                                                           var clo1, clo1$$1;
+            //                                                           return button$$1(ofArray([new Option(15, \"Props\", new List(new HTMLAttr(59, \"Id\", (clo1 = toText(printf(\"Button%i%i\")), function (arg10) {
+            //                                                             const clo2 = clo1(arg10);
+            //                                                             return function (arg20) {
+            //                                                               return clo2(arg20);
+            //                                                             };
+            //                                                           })(id$$1)(intForWhichTab)), new List())), new Option(16, \"OnClick\", function (_arg1) {
+            //                                                             dispatch(new Msg(9, \"UpdateActiveModifierList\", id$$1, intForWhichTab, searchForName));
+            //                                                           }), new Option(0, \"Color\", new Color$0024002EIColor(6, \"is-success\")), new Option(5, \"is-inverted\")]), new List(Helpers$0024$0024$0024str((clo1$$1 = toText(printf(\"add %s\")), function (arg10$$1) {
+            //                                                             return clo1$$1(arg10$$1);
+            //                                                           })(searchForName)), new List()));
+            //                                                         }
+            //                                                         </script>"
+            //                               )
+            //              ]
+            //              [ str "click to change above button"]
             //pathfinderCoreChooseModule exmpCharArr exmpWeaponArr model dispatch
-            str (string model.SearchBarList)
-            str "|||||||||||||||||||||||||"
-            str (string model.SearchResultList)
+            //str (string model.SearchBarList)
+            //str "|||||||||||||||||||||||||"
+            //str (string model.SearchResultList)
             //pathfinderCoreShowModule model dispatch
             footer [ ClassName "footer" ]
                    [ footerContainer ]
         ]
-
 
 #if DEBUG
 open Elmish.Debug
@@ -768,36 +891,3 @@ Program.mkProgram init update view
 |> Program.withDebugger
 #endif
 |> Program.run
-
-                                                                  //(model.SearchResultList
-                                                                  //|> fun x -> if x = []
-                                                                  //            then [|"This","did","fail"|]
-                                                                  //                 |> Array.map (fun (name,desc,button) -> tr [ ]
-                                                                  //                                                            [ td [ ] [ str name ]
-                                                                  //                                                              td [ ] [ str desc ]
-                                                                  //                                                              td [ ] [ str button ]
-                                                                  //                                                            ]
-                                                                  //                              )
-                                                                  //            else x
-                                                                  //                 |> List.head
-                                                                  //                 |> snd
-                                                                  //                 |> fun x -> if 0 <> 0
-                                                                  //                             then [|"This","did","fail"|]
-                                                                  //                             else (match tabCategory with
-                                                                  //                                  | "characters" -> x.SearchResultChar
-                                                                  //                                                    |> fun x -> Array.filter (fun (character:CharacterStats) -> Array.contains character.CharacterName x) exmpCharArr
-                                                                  //                                                    |> Array.map (fun x -> x.CharacterName,"","HereWillBeButton")
-                                                                  //                                  | "weapons" -> x.SearchResultWeapons
-                                                                  //                                                 |> fun x -> Array.filter (fun (modi:Weapon) -> Array.contains modi.Name x) exmpWeaponArr
-                                                                  //                                                 |> Array.map (fun x -> x.Name,"","HereWillBeButton")
-                                                                  //                                  | "modifications" -> x.SearchResultModifications
-                                                                  //                                                       |> fun x -> Array.filter (fun (modi:AttackModification) -> Array.contains modi.Name x) ModificationArr
-                                                                  //                                                       |> Array.map (fun x -> x.Name,x.Description,"HereWillBeButton")
-                                                                  //                                  | _ -> failwith "unknown case, you should not get this 003")
-                                                                  //                 |> Array.map (fun (name,desc,button) -> tr [ ]
-                                                                  //                                                            [ td [ ] [ str name ]
-                                                                  //                                                              td [ ] [ str desc ]
-                                                                  //                                                              td [ ] [ str button ]
-                                                                  //                                                            ]
-                                                                  //                              )
-                                                                  //                 |> fun x -> x
