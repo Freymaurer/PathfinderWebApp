@@ -32,17 +32,19 @@ open System.Diagnostics.Tracing
 
 
 let exmpCharArr = [|Characters.myParrn; Characters.myTumor; Characters.myElemental;|] |> Array.sort
-let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn|] |> Array.sort
-let ModificationArr = [|Modifications.Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus|] |> Array.sort
+let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn; Weapons.enchantedLongswordElemental; Weapons.glaiveGuisarmePlus1FlamingBurst; Weapons.mwkRapier; Weapons.mwkLongbow
+                      Weapons.slamElemental |] |> Array.sort
+let ModificationArr = [|Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus
+                        Shaken;WeaponFocus;EnlargePerson; MutagenStrength;WeaponSpecialization;Fatigued;AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;BlessingOfFervorAttackBonus |] |> Array.sort
 let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] |> Array.sortBy (fun x -> (x 0).Name)
-let testArr = [|
-                Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
-                Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
-                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
-                BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
-              |] |> Array.sortBy (fun x -> x.Name)
+let CompleteModificationArr = [|
+                                Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
+                                Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
+                                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
+                                BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
+                              |] |> Array.sortBy (fun x -> x.Name)
 
-
+/// function for similarity measurements
 let sorensenCoefficent (str1:string) (str2:string) =
     let charSeq1 = str1.ToCharArray()
     let charSeq2 = str2.ToCharArray()
@@ -157,7 +159,6 @@ let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
 type Model = { 
-    VariableForVarModifications: int
     TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> React.ReactElement)) list
     SearchBarList: (int*SubTabsSearchBars) list
     SearchResultList : (int*SearchResult) list
@@ -175,6 +176,8 @@ type Msg =
 | UpdateSearchResultList of int * int
 | UpdateActiveModifierList of int * int * string
 | UpdateActiveModifierListOnlySize of int*string
+| ResetActiveWeapon of int
+| ResetActiveModifications of int
 | CloseTab of int
 
 let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
@@ -186,17 +189,21 @@ let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg 
                   ]
                   [ str (sprintf "add %s" searchForName)]
 
-//<button class="button is-success is-inverted" id="Button01">add Parrn</button>
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
     let initialModel = { 
-        VariableForVarModifications = 0
+        //ReactElements with AttackCalculator function, all with id
         TabList = []
+        //SearchBar input from TabList, all with id
         SearchBarList = []
+        //Results after searching library for input in SearchBar, all with id
         SearchResultList = []
+        //Selected modifiers which will be used for attack calculator, all with id
         ActiveModifierList = []
+        //Calculation results, all with id
         CalculationResult = []
+        // will count one up for each tab created
         IDCounter = 0
         }
 
@@ -357,6 +364,32 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 CalculationResult = (id,outputFinalized)::currentModel.CalculationResult
             }
         nextModel, Cmd.none
+    | _, ResetActiveWeapon (id) ->
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+                                      |> fun x -> snd x.Value
+        let resetActiveModifers = {
+            activeModifierMatchedID with
+                ActiveWeapons = [EmptyWeapon]
+            }
+        let nextModel = {
+            currentModel with
+                ActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
+                                                                            ] currentModel.ActiveModifierList)
+            }
+        nextModel, Cmd.none
+    | _, ResetActiveModifications (id) ->
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+                                      |> fun x -> snd x.Value
+        let resetActiveModifers = {
+            activeModifierMatchedID with
+                ActiveModifications = [EmptyModification]
+            }
+        let nextModel = {
+            currentModel with
+                ActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
+                                                                            ] currentModel.ActiveModifierList)
+            }
+        nextModel, Cmd.none
     | _ -> currentModel, Cmd.none
 
 let safeComponents =
@@ -390,17 +423,13 @@ let navBrand =
               span [ ] [ ]
               span [ ] [ ] ] ]
 
-//let navMenu =
-//    Navbar.menu [ ]
-//        [ Navbar.End.div [ ]
-//            [ Navbar.Item.a [ ]
-//                [ str "Home" ]
-//              Navbar.Item.a [ ]
-//                [ str "Examples" ]
-//              Navbar.Item.a [ ]
-//                [ str "Documentation" ]
-//            ]
-//        ]
+let navMenu =
+    Navbar.menu [ ]
+        [ Navbar.End.div [ ]
+            [ Navbar.Item.a [ Navbar.Item.Props [ Href "https://freymaurer.github.io/PathfinderAttackSimulator/"] ]
+                            [ str "Documentation" ]
+            ]
+        ]
 
 let doHideShow (tabId:string) (cardID:int) =
     let x = Browser.document.getElementById(sprintf "%A%i" tabId cardID)
@@ -426,9 +455,9 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
         |> Array.map (fun (subSearch,button) -> tr [ ]
                                                    [ th [ ] [ str (sprintf "%s" subSearch.ResultName) ]
                                                      th [ ]
-                                                        [ p [ ]
-                                                            [ str (sprintf "%s" subSearch.ResultDescription) ]
-                                                            ]
+                                                        [ Text.span [ Modifiers [Modifier.TextSize (Screen.All,TextSize.Is7) ] ]
+                                                                    [ str (sprintf "%s" subSearch.ResultDescription) ] 
+                                                        ]
                                                      th [ ] [ button ]
                                                    ]
                      )
@@ -445,7 +474,6 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                      [ Control.div [ ]
                                                                                    [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
                                                                                                   Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                                                           
                                                                                                                            dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
                                                                                                                  ) 
                                                                                                 ] 
@@ -474,7 +502,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                           [ thead [ ]
                                                                   [ tr [ ]
                                                                        [ th [ ] [ str "Name" ]
-                                                                         th [  ] [ str "Description" ]
+                                                                         th [ ] [ str "Description" ]
                                                                          th [ ] [ str "add" ] ] ]
                                                             tbody [ Props.Id (sprintf "SearchResultTable%s%i" tabCategory id) ]
                                                                   /// module to display SearchResults
@@ -505,45 +533,67 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                              ]
                  [ str sizeStr]
     Card.card [  ]
-        [ Card.header [ ]
+        [ Card.header [ Modifiers [ Modifier.BackgroundColor IsGreyLighter] ]
             [ Card.Header.title [ Card.Header.Title.IsCentered
+                                  Card.Header.Title.CustomClass "BiggerSize" //does not work either
                                 ]
                                 [ str "Attack Calculator" ]
-              Button.button [ Button.Color IsWhite
-                              Button.OnClick (fun _ -> doHideShow "TabMainInfo" id
-                                                       doHideShow "TabMainOutput" id
-                                                       doHide "Tabweapons" id
-                                                       doHide "Tabcharacters" id
-                                                       doHide "Tabmodifications" id
-                                             )
-                              Button.Props [ Tooltip.dataTooltip "hide/show card" ]
-                              Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                            ]
-                            [ Icon.icon [ Icon.Size IsSmall ]
-                                        [ i [ClassName "fa fa-angle-down"] [] ]
-                            ]
-              Button.button [ Button.Color IsWhite
-                              Button.OnClick (fun _ -> dispatch (CloseTab id))
-                              Button.Props [ Tooltip.dataTooltip "close" ]
-                              Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                            ]
-                            [ Icon.icon [ Icon.Size IsSmall ]
-                                        [ i [ClassName "fa fa-times-circle"] [] ]
-                            ]
+              Card.Header.icon [ Modifiers [Modifier.TextAlignment (Screen.All,TextAlignment.Right)] ]
+                               [ Button.button [ Button.Color IsWhite
+                                                 Button.OnClick (fun _ -> doHideShow "TabMainInfo" id
+                                                                          doHideShow "TabMainOutput" id
+                                                                          doHide "Tabweapons" id
+                                                                          doHide "Tabcharacters" id
+                                                                          doHide "Tabmodifications" id
+                                                                )
+                                                 Button.Props [ Tooltip.dataTooltip "hide/show card" ]
+                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
+                                               ]
+                                               [ Icon.icon [ Icon.Size IsSmall ]
+                                                           [ i [ClassName "fa fa-angle-down"] [] ]
+                                               ]
+                                 Button.button [ Button.Color IsWhite
+                                                 Button.OnClick (fun _ -> dispatch (CloseTab id))
+                                                 Button.Props [ Tooltip.dataTooltip "close" ]
+                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
+                                               ]
+                                               [ Icon.icon [ Icon.Size IsSmall ]
+                                                           [ i [ClassName "fa fa-times-circle"] [] ]
+                                               ]
+                               ]
             ]
           Card.content [ Props [ Props.Id (sprintf "TabMainOutput%A" id); Props.Style [CSSProp.Display "none"] ]
                           ]
                        [ Container.container [ Container.IsFluid
                                                Container.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is6)] ]
-                                             [ h1 [ Props.Id (sprintf "OutputCharacter%A" id)
-                                                    (*Props.Font*) ]
+                                             [ h4 [ Props.Id (sprintf "OutputCharacter%A" id)]
                                                   [ str relatedActiveModifier.ActiveCharacter.CharacterName]
                                                p [ Props.Id (sprintf "OutputSize%A" id) ]
                                                  [ str (string relatedActiveModifier.ActiveSize) ]
                                                p [ Props.Id (sprintf "OutputWeapons%A" id) ]
-                                                 [ str stringOfActiveWeaponNames ]
+                                                 [ Level.level [ ]
+                                                               [ str stringOfActiveWeaponNames
+                                                                 Button.button [ Button.IsOutlined
+                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveWeapon id))
+                                                                                 Button.Props [ Tooltip.dataTooltip "click here to reset all selected weapons" ]
+                                                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
+                                                                                 Button.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is7) ]
+                                                                               ]
+                                                                               [ str "reset weapons" ]
+                                                               ]
+                                                 ]
                                                p [ Props.Id (sprintf "OutputModifications%A" id) ]
-                                                 [ str stringOfActiveModifications ] 
+                                                 [ Level.level [ ]
+                                                               [ str stringOfActiveModifications
+                                                                 Button.button [ Button.IsOutlined
+                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveModifications id))
+                                                                                 Button.Props [ Tooltip.dataTooltip "click here to reset all selected modifications" ]
+                                                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
+                                                                                 Button.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is7) ]
+                                                                               ]
+                                                                               [ str "reset weapons" ]
+                                                               ]
+                                                 ] 
                                              ]
                        ]
           Card.content [ Props [ Props.Id (sprintf "TabMainInfo%A" id); Props.Style [CSSProp.Display "none"] ] ]
@@ -554,11 +604,14 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                                     Button.OnClick (fun _ -> dispatch (CalculateStandardAttackAction id)
                                                                                    )
                                                                   ]
-                                                                  [ span [] [ str "Calculate Standard Attack" ]
-                                                                  ]
+                                                                  [ Icon.icon [ Icon.Size IsSmall ]
+                                                                              [ i [ClassName "fas fa-dice-six"] [] ]
+                                                                    span [] [str "Calculate Standard Attack"
+                                                                                ]
+                                                                  ] 
                                                   ]
-                                       Level.item []
-                                                  [ str "Test2" ]
+                                       //Level.item []
+                                       //           [ str "Test2" ]
                                      ]
                          Notification.notification [ Notification.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left)] ]
                                                    specificCalculationResultsFinalized
@@ -639,7 +692,8 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
           searchBarTab dispatch id "weapons" searchResult.SearchResultWeapons
           searchBarTab dispatch id "modifications" searchResult.SearchResultModifications
           Card.Footer.div [Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered)
-                                       Modifier.TextWeight TextWeight.Bold ]
+                                       Modifier.TextWeight TextWeight.Bold
+                                       Modifier.BackgroundColor IsGreyLighter]
                           ] 
                           [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
         ]
@@ -663,7 +717,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   [ Navbar.navbar [ ]
                       [ Container.container [ ]
                           [ navBrand
-                            (*navMenu*) ] ] ]
+                            navMenu ] ] ]
                 Hero.body [ ]
                   [ Container.container [ Container.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
                       [ img [ Src "https://steemitimages.com/DQmTFWdqNAFhbxQjJ9HZXKx7BkQx52kpRorsnJxkdD1wagZ/Pathfinder.png"
@@ -675,13 +729,22 @@ let view (model : Model) (dispatch : Msg -> unit) =
               ]
             Container.container [ Container.IsFluid ]
                                 [ Heading.p [ ]
-                                            [ Button.button [ Button.Color IsWhite
-                                                              Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
-                                                                                                )
-                                                                             )
-                                                            ]
-                                                            [ str "Open new Attack Calculator tab"] 
+                                            [ Level.level [ ]
+                                                          //creaters button, which creates the attack calculator card and adds empty spaces to all models related to this card.
+                                                          [ Button.button [ Button.Color IsWhite
+                                                                            Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
+                                                                                                                               )
+                                                                                                              )
+                                                                          ]
+                                                                          [ str "Open new Attack Calculator tab"]
+                                                            Button.button [ ]
+                                                                          [str "Add custom Character (soon)"]
+                                                            Button.button []
+                                                                          [str "Add custom Weapon (soon)"]
+
+                                                          ]
                                             ]
+                                  // contains all above mentioned cards
                                   Content.content []
                                                   [ Content.content [ ]
                                                                     (   (List.sortByDescending fst model.TabList)
@@ -693,25 +756,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     )   
                                                   ]              
                                 ]
-             //Column.column [ ]
-             //              [ div [ ClassName "block" ]
-             //                    [ // Block sample
-             //                      b [ ] [str "Block"]
-             //                      Checkradio.radio [ Checkradio.Name "block"
-             //                                         Checkradio.Id "checkradio-5" ]
-             //                          [ str "One" ]
-             //                      Checkradio.radio [ Checkradio.Name "block"
-             //                                         Checkradio.Id "checkradio-6" ]
-             //                          [ str "Two" ]
-             //                       Inline sample
-             //                      b [ ] [ str "Inline"]
-             //                      Field.div [ ]
-             //                          [ Checkradio.radioInline [ Checkradio.Name "inline"
-             //                                                     Checkradio.Id "checkradio-7" ]
-             //                              [ str "One" ]
-             //                            Checkradio.radioInline [ Checkradio.Name "inline"
-             //                                                     Checkradio.Id "checkradio-8" ]
-             //                              [ str "Two " ] ] ] ] 
             footer [ ClassName "footer" ]
                    [ footerContainer ]
         ]

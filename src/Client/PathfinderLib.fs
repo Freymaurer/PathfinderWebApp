@@ -135,6 +135,11 @@ module Library =
             OnCrit  : Bonus
             }
 
+        type InputParameter = {
+            InfoText : string
+            Placeholdertext : string
+            }
+
         /// NoAS 0 Flat if no StatChange, or leave array empty
         let createStatChange att attChange bType = {
             Attribute = att
@@ -206,6 +211,11 @@ module Library =
             DamageHitAndCrit.OnCrit = createDamage numberOfDieOnCrit dieOnCrit dmgTypeOnCrit
             }
 
+        let createInputParameter infotext placeholder = {
+            InfoText = infotext
+            Placeholdertext = placeholder
+            }
+
         let findSizes = [1,createSizeAttributes 8 1 Fine;
                         2,createSizeAttributes 4 2 Diminuitive;
                         3,createSizeAttributes 2 3 Tiny;
@@ -254,6 +264,7 @@ module Library =
             StatChanges         : StatChange []
             SizeChanges         : SizeChange
             Description         : string
+            WebInputParameter   : InputParameter []
             }
 
     /// library for all prebuild characters; this is mostly for personal use or functions as an example
@@ -491,6 +502,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let BlessingOfFervorAttackBonus = {
@@ -503,6 +515,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Blessing of Fervor with the +2 attack bonus as choice"
+            WebInputParameter = [||]
             }
         
         /// use this modification to add fast and easy flat boni to attack rolls or to damage.
@@ -516,6 +529,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Use this modification to add fast and easy flat boni to attack rolls or to damage"
+            WebInputParameter = [|createInputParameter "Bonus to attack rolls" "eg. 2"; createInputParameter "Bonus to damage rolls" "eg. 2"|]
             }
 
         let Charging = {
@@ -528,6 +542,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "+2 on attack rolls"
+            WebInputParameter = [||]
             }
 
         let CriticalFocus = {
@@ -540,6 +555,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Applies +4 to all crits not, as its not able to separate weapons"
+            WebInputParameter = [||]
             }
 
         let DivineFavor = {
@@ -552,6 +568,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let EnlargePerson = {
@@ -564,6 +581,7 @@ module Library =
             StatChanges = [|(createStatChange Strength 2 Size);(createStatChange Dexterity -2 Size)|]
             SizeChanges = createSizechange 1 Polymorph false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let Fatigued = {
@@ -576,6 +594,7 @@ module Library =
             StatChanges = [|(createStatChange Strength -2 Flat); (createStatChange Dexterity -2 Size)|]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let Flanking = {
@@ -588,6 +607,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let FlurryOfBlows = {
@@ -600,6 +620,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let FuriousFocus bab = {
@@ -612,6 +633,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let Haste = {
@@ -624,6 +646,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let InspireCourage bardLevel = 
@@ -642,6 +665,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "For a set level, because of several IC increasing items"
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let Invisibility = {
@@ -654,6 +678,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let Multiattack =  {
@@ -666,6 +691,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Gives all secondary attacks +3 on attack rolls, effectively reducing the attack penality for secondary attacks to -2"
+            WebInputParameter = [||]
             }
 
         let MutagenStrength = {
@@ -678,6 +704,7 @@ module Library =
             StatChanges = [|(createStatChange Strength 4 Alchemical); (createStatChange Intelligence -2 Alchemical)|]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let PlanarFocusFire (lvl:int) = 
@@ -692,6 +719,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let PowerAttack bab = {
@@ -704,6 +732,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Takes BAB as input."
+            WebInputParameter = [|createInputParameter "" ""|]
             }
         
         let PowerAttackURL (handed:WeaponHanded) bab= {
@@ -720,6 +749,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Takes OneHanded/TwoHanded/OffHanded and BAB as input. Use this only for the calculateURLAttack function."
+            WebInputParameter = [|createInputParameter "" ""|]
             }        
     
         let Shaken = {
@@ -732,6 +762,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         let ShockingGrasp casterLevel metalTF = {
@@ -744,6 +775,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 5d6."
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let ShockingGraspIntensifiedEmpowered casterLevel metalTF = {
@@ -759,6 +791,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 10d6 for this intensified version. Empowered increases the number of all rolled dice by 50%"
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let SneakAttack (rogueLevel:int) = {
@@ -771,6 +804,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         let SneakAttackOnce rogueLevel = {
@@ -783,6 +817,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Sneak Attack on first attack. This can happen due to a stealth attack or an full-round attack action from invisibility"
+            WebInputParameter = [|createInputParameter "" ""|]
             }
 
         ///mit allen als Primary gelisteten Waffen; bisher nur mit -2 auf Treffen
@@ -796,6 +831,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Gives -2 to all attacks."
+            WebInputParameter = [||]
             }    
 
         /// mit allen als Primary gelisteten Waffen; bisher nur mit -2 auf Treffen
@@ -809,6 +845,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Gives -2 to all attacks."
+            WebInputParameter = [||]
             }
 
         /// This modification is hardcoded, so it does not follow normal modification rules
@@ -822,6 +859,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "These extra weapon damage dice are not multiplied on a critical hit, but are added to the total"
+            WebInputParameter = [||]
             }
             
         /// This modification is hardcoded, so it does not follow normal modification rules
@@ -835,6 +873,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "These extra weapon damage dice are not multiplied on a critical hit, but are added to the total"
+            WebInputParameter = [||]
             }
 
         /// This modification is hardcoded, so it does not follow normal modification rules
@@ -848,6 +887,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "These extra weapon damage dice are not multiplied on a critical hit, but are added to the total"
+            WebInputParameter = [||]
             }
 
         let WeaponFocus = {
@@ -860,6 +900,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Only use this if you only use one weapon."
+            WebInputParameter = [||]
             }
 
         let WeaponSpecialization ={
@@ -872,6 +913,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Only use this if you only use one weapon."
+            WebInputParameter = [||]
             }
 
         let Wrath = {
@@ -884,6 +926,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         /// Never delete this!! This is 100% necessary for FullRoundAttackAction to function, as it works as a filler for the modificationArrays.
@@ -898,6 +941,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
     
     /// This part is still under construction, come back later.
@@ -957,6 +1001,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
+            WebInputParameter = [||]
             }
 
         /// use this one as empty char for web application as he has an empty string as name
