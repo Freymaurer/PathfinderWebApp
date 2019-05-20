@@ -934,8 +934,8 @@ module Library =
             | _ -> failwith "Unknown Input. Type *Modifications*, *Weapons* or *Characters* (without the *) to see all related objects in the library."
 
 
-        let TestWeapon = {
-                Name                = "Test"
+        let EmptyWeapon = {
+                Name                = "Here will be your weapons"
                 Damage              = createDamage 1 6 Slashing
                 DamageBonus         = 0
                 ExtraDamage         = createDamageHitAndCrit 0 0 Untyped 0 0 Untyped
@@ -947,22 +947,21 @@ module Library =
                 Description         = ""
                 }
     
-        let TestCharacter = { 
-                CharacterName = createStringForLib "TestChar"
-                BAB = 0
-                Strength = 0
-                Dexterity = 0
-                Constitution = 0
-                Intelligence = 0
-                Wisdom = 0
-                Charisma = 0
-                CasterLevel1 = 0
-                CasterLevel2 = 0
-                }
+        let EmptyModification = {
+            Name = "Here will be your modifications"
+            BonusAttacks = createBonusAttacks 0 NoBA All
+            BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
+            BonusDamage = createBonus 0 Flat
+            ExtraDamage = createDamageHitAndCrit 0 0 Untyped 0 0 Untyped
+            AppliedTo = [|All|], -20
+            StatChanges = [||]
+            SizeChanges = createSizechange 0 Flat false
+            Description = ""
+            }
 
         /// use this one as empty char for web application as he has an empty string as name
         let EmptyChar = { 
-                CharacterName = ""
+                CharacterName = "Here will be your character"
                 BAB = 0
                 Strength = 0
                 Dexterity = 0
