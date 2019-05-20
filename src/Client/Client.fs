@@ -267,7 +267,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             ///defines searchResult
          let filter =
              match intForWhichTab with
-             | 1 -> ((searchForCharacters exmpCharArr searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName "a nice guy") )
+             | 1 -> ((searchForCharacters exmpCharArr searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName x.CharacterDescription) )
              | 2 -> ((searchForWeapons exmpWeaponArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | 3 -> ((searchForModifications ModificationArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | _ -> failwith "unknown case, you should not get this 004"                                                                                                                                

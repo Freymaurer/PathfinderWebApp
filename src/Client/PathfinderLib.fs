@@ -239,6 +239,7 @@ module Library =
             Charisma: int
             CasterLevel1 : int
             CasterLevel2 : int
+            CharacterDescription : string
             }
 
         type Weapon = {
@@ -284,6 +285,7 @@ module Library =
             Charisma = 10
             CasterLevel1 = 0
             CasterLevel2 = 0
+            CharacterDescription = "a nice guy"
             }
 
 
@@ -298,6 +300,7 @@ module Library =
             Charisma = 10
             CasterLevel1 = 0
             CasterLevel2 = 0
+            CharacterDescription = "a nice tumor"
             }
 
         let myElemental = {
@@ -311,6 +314,7 @@ module Library =
             Charisma = 10
             CasterLevel1 = 0
             CasterLevel2 = 0
+            CharacterDescription = "a nice elemental"
             }
 
     /// Library for all pre-written weapons; this is mostly for personal use or meant as an example
@@ -1016,6 +1020,7 @@ module Library =
                 Charisma = 0
                 CasterLevel1 = 0
                 CasterLevel2 = 0
+                CharacterDescription = ""
                 }
     
         //
