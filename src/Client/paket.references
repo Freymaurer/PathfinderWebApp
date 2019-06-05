@@ -1,10 +1,10 @@
+Fulma.Extensions.Wikiki.Tooltip
 group Client
-    FSharp.Core
-    Fable.Elmish.Debugger
-    Fable.Elmish.React
-    Fable.Elmish.HMR
-    Fable.Core
-    Fulma
-    Fulma.Extensions.Wikiki.Tooltip
-    Fable.FontAwesome.Free
-
+FSharp.Core
+Fable.Core
+Fable.Elmish.Debugger
+Fable.Elmish.React
+Fable.Elmish.HMR
+Thoth.Fetch
+Fulma
+Fable.FontAwesome.Free

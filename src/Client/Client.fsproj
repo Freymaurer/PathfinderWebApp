@@ -2,15 +2,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <DefineConstants>FABLE_COMPILER</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
+        <None Include="index.html" />
+        <None Include="paket.references" />
+        <None Include="style.scss" />
+        <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="PathfinderLib.fs" />
+        <Compile Include="BestiaryCalculator.fs" />
+        <Compile Include="BestiaryReader.fs" />
+        <Compile Include="DPRCalculator.fs" />
         <Compile Include="StandardAttackAction.fs" />
         <Compile Include="FullRoundAttackAction.fs" />
-        <Compile Include="DPRCalculator.fs" />
-        <Compile Include="BestiaryReader.fs" />
-        <Compile Include="BestiaryCalculator.fs" />
-        <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="Client.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -1,35 +1,31 @@
 module Client
 
+
+open System
 open Elmish
 open Elmish.React
-
-open Fable.Helpers.React
-open Fable.Helpers.React.Props
-open Fable.PowerPack.Fetch
-open Fable.Core.JsInterop
 open Fable.FontAwesome
 open Fable.FontAwesome.Free
-
+open Fable.React
+open Fable.React.Props
+open Fable.Core.JsInterop
+open Fetch.Types
+open Thoth.Fetch
+open Fulma
 open Thoth.Json
 
 open Shared
+
+open Browser
+open Fulma.Extensions.Wikiki
+
+
 open PathfinderAttackSimulator.Library
 open AuxLibFunctions
 open Modifications
 open Server
 open PathfinderAttackSimulator.StandardAttackAction
 open PathfinderAttackSimulator.FullRoundAttackAction
-
-
-open Fulma
-open Fulma.Extensions.Wikiki
-open Fable.Import
-open Fable.Import
-open Fable.Import
-open Fable.Import
-open Fable.Import
-open System.Diagnostics.Tracing
-
 
 let exmpCharArr = [|Characters.myParrn; Characters.myTumor; Characters.myElemental;|] |> Array.sort
 let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn; Weapons.enchantedLongswordElemental; Weapons.glaiveGuisarmePlus1FlamingBurst; Weapons.mwkRapier; Weapons.mwkLongbow
@@ -159,7 +155,7 @@ let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
 type Model = { 
-    TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> React.ReactElement)) list
+    TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> ReactElement)) list
     SearchBarList: (int*SubTabsSearchBars) list
     SearchResultList : (int*SearchResult) list
     ActiveModifierList : (int * ActiveModifiers) list
@@ -171,7 +167,7 @@ type Model = {
 // the state of the application changes *only* in reaction to these events
 type Msg =
 | CalculateStandardAttackAction of int
-| AddTabToTabList of (SearchResult -> string [] -> ActiveModifiers -> React.ReactElement)
+| AddTabToTabList of (SearchResult -> string [] -> ActiveModifiers -> ReactElement)
 | UpdateSearchBarList of int * int * string
 | UpdateSearchResultList of int * int
 | UpdateActiveModifierList of int * int * string
@@ -390,7 +386,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                             ] currentModel.ActiveModifierList)
             }
         nextModel, Cmd.none
-    | _ -> currentModel, Cmd.none
+    //| _ -> currentModel, Cmd.none
 
 let safeComponents =
     let components =
@@ -432,15 +428,14 @@ let navMenu =
         ]
 
 let doHideShow (tabId:string) (cardID:int) =
-    let x = Browser.document.getElementById(sprintf "%A%i" tabId cardID)
-    if x.style.display = "none"
-    then x.style.display <- "block"
-    else x.style.display <- "none"
+    let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
+    if x?style?display = "none"
+    then x?style?display <- "block"
+    else x?style?display <- "none"
 
 let doHide (tabId:string) (cardID:int) =
-    let x = Browser.document.getElementById(sprintf "%A%i" tabId cardID)
-    x.style.display <- "none"
-
+    let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
+    x?style?display <- false
 
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
     let getIntForTabCategory =
@@ -462,7 +457,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                    ]
                      )
         //|> Array.map
-    Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display "none"]
+    Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display DisplayOptions.None]
                                     ]
                     ]
                     [ Columns.columns [ ]
@@ -562,7 +557,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                ]
                                ]
             ]
-          Card.content [ Props [ Props.Id (sprintf "TabMainOutput%A" id); Props.Style [CSSProp.Display "none"] ]
+          Card.content [ Props [ Props.Id (sprintf "TabMainOutput%A" id); Props.Style [CSSProp.Display DisplayOptions.None] ]
                           ]
                        [ Container.container [ Container.IsFluid
                                                Container.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is6)] ]
@@ -596,7 +591,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                  ] 
                                              ]
                        ]
-          Card.content [ Props [ Props.Id (sprintf "TabMainInfo%A" id); Props.Style [CSSProp.Display "none"] ] ]
+          Card.content [ Props [ Props.Id (sprintf "TabMainInfo%A" id); Props.Style [CSSProp.Display DisplayOptions.None] ] ]
                        [ Level.level [ ]
                                      [ Level.item []
                                                   [ Button.button [ Button.Color IsInfo
@@ -768,9 +763,8 @@ open Elmish.HMR
 Program.mkProgram init update view
 #if DEBUG
 |> Program.withConsoleTrace
-|> Program.withHMR
 #endif
-|> Program.withReact "elmish-app"
+|> Program.withReactBatched "elmish-app"
 #if DEBUG
 |> Program.withDebugger
 #endif

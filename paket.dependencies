@@ -15,16 +15,15 @@ group Client
     framework: netstandard2.0
     storage: none
 
-    nuget Fable.Core ~> 2
-    nuget Fable.Elmish ~> 2
-    nuget Fable.Elmish.Debugger ~> 2
-    nuget Fable.Elmish.React ~> 2
-    nuget Fable.Elmish.HMR ~> 2
-    nuget Fable.React ~> 4
-    nuget Fulma
-    nuget Fulma.Extensions.Wikiki.Tooltip
-    nuget Fable.FontAwesome.Free
-
+    nuget Fable.Core ~> 3
+    nuget Fable.Elmish ~> 3
+    nuget Fable.Elmish.Debugger ~> 3
+    nuget Fable.Elmish.HMR ~> 4
+    nuget Fable.Elmish.React ~> 3
+    nuget Thoth.Fetch ~> 1
+    nuget Fable.React ~> 5
+    nuget Fulma ~> 2
+    nuget Fable.FontAwesome.Free ~> 2
 group Build
     source https://api.nuget.org/v3/index.json
     framework: netstandard2.0
