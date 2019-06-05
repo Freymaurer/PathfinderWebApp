@@ -26,6 +26,9 @@ open Modifications
 open Server
 open PathfinderAttackSimulator.StandardAttackAction
 open PathfinderAttackSimulator.FullRoundAttackAction
+open Browser.Types
+open Fulma
+open Fulma
 
 let exmpCharArr = [|Characters.myParrn; Characters.myTumor; Characters.myElemental;|] |> Array.sort
 let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn; Weapons.enchantedLongswordElemental; Weapons.glaiveGuisarmePlus1FlamingBurst; Weapons.mwkRapier; Weapons.mwkLongbow
@@ -435,7 +438,10 @@ let doHideShow (tabId:string) (cardID:int) =
 
 let doHide (tabId:string) (cardID:int) =
     let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
-    x?style?display <- false
+    x?style?display <- "none"
+
+let content = div []
+                  [str "this is a test"]
 
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
     let getIntForTabCategory =
@@ -456,54 +462,70 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                      th [ ] [ button ]
                                                    ]
                      )
-        //|> Array.map
+
     Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display DisplayOptions.None]
                                     ]
                     ]
                     [ Columns.columns [ ]
                                       [ Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-                                            [ Heading.h6 [ ]
-                                                         [ str "Searchbar"] 
-                                              Level.item [ ]
-                                                         [ Field.div [ Field.HasAddons ]
-                                                                     [ Control.div [ ]
-                                                                                   [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
-                                                                                                  Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                                                           dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
-                                                                                                                 ) 
-                                                                                                ] 
-                                                                                   ]
-                                                                       Control.div [ ]
-                                                                                   [ Button.button [ Button.OnClick (fun _ -> let getIntForTabCategory =
-                                                                                                                                  match tabCategory with
-                                                                                                                                  | "characters" -> 1
-                                                                                                                                  | "weapons" -> 2
-                                                                                                                                  | "modifications" -> 3
-                                                                                                                                  | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                              dispatch (UpdateSearchResultList (id, getIntForTabCategory))
+                                                      [ Heading.h6 [ ]
+                                                                   [ str "Searchbar"] 
+                                                        Level.item [ ]
+                                                                   [ Field.div [ Field.HasAddons ]
+                                                                               [ Control.div [ ]
+                                                                                             [Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
+                                                                                                              Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
+                                                                                                              Button.OnClick (fun _ -> let getIntForTabCategory =
+                                                                                                                                           match tabCategory with
+                                                                                                                                           | "characters" -> 1
+                                                                                                                                           | "weapons" -> 2
+                                                                                                                                           | "modifications" -> 3
+                                                                                                                                           | _ -> failwith "unknown case, you should not get this 003"
+                                                                                                                                       dispatch (UpdateSearchResultList (id, getIntForTabCategory))
 
-                                                                                                                    )
-                                                                                                   ]
-                                                                                                   [ str "Search" ]
-                                                                                   ]
-                                                                     ]
-                                                         ]
-                                            ]
+                                                                                                                              )
+                                                                                                            ]
+                                                                                                            [ Icon.icon [ Icon.Size IsSmall ]
+                                                                                                                        [ i [ClassName "fas fa-plus-circle"] [] ] ]
+                                                                                             ]
+                                                                                 Control.div [ ]
+                                                                                             [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
+                                                                                                            Input.OnChange (fun e -> let x = !!e.target?value
+                                                                                                                                     dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
+                                                                                                                           ) 
+                                                                                                          ] 
+                                                                                             ]
+                                                                                 Control.div [ ]
+                                                                                             [ Button.button [ Button.OnClick (fun _ -> let getIntForTabCategory =
+                                                                                                                                            match tabCategory with
+                                                                                                                                            | "characters" -> 1
+                                                                                                                                            | "weapons" -> 2
+                                                                                                                                            | "modifications" -> 3
+                                                                                                                                            | _ -> failwith "unknown case, you should not get this 003"
+                                                                                                                                        dispatch (UpdateSearchResultList (id, getIntForTabCategory))
+
+                                                                                                                              )
+                                                                                                             ]
+                                                                                                             [ str "Search" ]
+                                                                                             ]
+                                                                               ]
+                                                                   ]
+                                                      ]
                                         Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-                                            [ Heading.h6 [ ]
-                                                         [ str "Results" ]
-                                              Table.table [ Table.IsBordered
-                                                            Table.IsFullWidth]
-                                                          [ thead [ ]
-                                                                  [ tr [ ]
-                                                                       [ th [ ] [ str "Name" ]
-                                                                         th [ ] [ str "Description" ]
-                                                                         th [ ] [ str "add" ] ] ]
-                                                            tbody [ Props.Id (sprintf "SearchResultTable%s%i" tabCategory id) ]
-                                                                  /// module to display SearchResults
-                                                                  searchResultElement
-                                                          ]
-                                            ]
+                                                      [ Heading.h6 [ ]
+                                                                   [ str "Results" ]
+                                                        Table.table [ Table.IsBordered
+                                                                      Table.IsFullWidth]
+                                                                    [ thead [ ]
+                                                                            [ tr [ ]
+                                                                                 [ th [ ] [ str "Name" ]
+                                                                                   th [ ] [ str "Description" ]
+                                                                                   th [ ] [ str "add" ] ] ]
+                                                                      tbody [ Props.Id (sprintf "SearchResultTable%s%i" tabCategory id) ]
+                                                                            /// module to display SearchResults
+                                                                            searchResultElement
+                                                                    ]
+                                                      ]
                                       ]
                     ]
 
@@ -693,6 +715,49 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                           [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
         ]
 
+let inputPanel description=
+    Panel.block [ ]
+                [ (*Panel.icon [ ] [ i [ ClassName "fa fa-book" ] [ ] ]*)
+                   Columns.columns [ ]
+                                   [ Column.column []
+                                                   [str description]
+                                     Column.column [ Column.Modifiers [Modifier.IModifier.TextAlignment(Screen.WideScreen,TextAlignment.Right) ] ]
+                                                   [ Control.div [ Control.HasIconLeft ]
+                                                                 [ Input.text [ Input.Size IsSmall
+                                                                                Input.Placeholder "Search" ]
+                                                                   Icon.icon [ Icon.Size IsSmall
+                                                                               Icon.IsLeft ]
+                                                                             [ i [ ClassName "fa fa-search" ] [ ]
+                                                                             ]
+                                                                 ]
+                                                   ]
+                                   ]
+                ]
+
+let addCharacterButton = Container.container [ ]
+                                     [Button.button [ ]
+                                                    [ str "Hello, i am a test button" ]
+                                      Columns.columns [ ]
+                                                      [ Column.column [ Column.Offset (Screen.All, Column.Is3)
+                                                                        Column.Width (Screen.All, Column.Is6) ]
+                                                                      [ Panel.panel [ ]
+                                                                                    [ Panel.heading [ ] [ str "Create Character"]
+                                                                                      inputPanel "Character Name:"
+                                                                                      inputPanel "Base Attack Bonus:"
+                                                                                      inputPanel "Strength:"
+                                                                                      inputPanel "Dexterity:"
+                                                                                      inputPanel "Constitution:"
+                                                                                      inputPanel "Intelligence:"
+                                                                                      inputPanel "Wisdom:"
+                                                                                      inputPanel "Charisma:"
+                                                                                      inputPanel "Character Description:"
+                                                                                      Panel.block [ ]
+                                                                                        [ Button.button [ Button.Color IsPrimary
+                                                                                                          Button.IsOutlined
+                                                                                                          Button.IsFullWidth ]
+                                                                                                        [ str "Add to Collection" ] ] ] ] ]
+                                     ]
+
 let footerContainer =
     Container.container [ ]
         [ Content.content [ Content.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
@@ -751,13 +816,20 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     )   
                                                   ]              
                                 ]
+            // Control elments of the UI
+            Card.card [ ]
+                      [ testButton
+                      ]
             footer [ ClassName "footer" ]
                    [ footerContainer ]
         ]
 
+
 #if DEBUG
 open Elmish.Debug
 open Elmish.HMR
+open Browser.Types
+
 #endif
 
 Program.mkProgram init update view
@@ -769,3 +841,4 @@ Program.mkProgram init update view
 |> Program.withDebugger
 #endif
 |> Program.run
+
