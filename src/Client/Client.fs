@@ -43,6 +43,7 @@ let CompleteModificationArr = [|
                                 BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
                               |] |> Array.sortBy (fun x -> x.Name)
 
+let hiddenModal = Modal.modal [Modal.IsActive false ] []
 /// function for similarity measurements
 let sorensenCoefficent (str1:string) (str2:string) =
     let charSeq1 = str1.ToCharArray()
@@ -161,8 +162,10 @@ type Model = {
     TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> ReactElement)) list
     SearchBarList: (int*SubTabsSearchBars) list
     SearchResultList : (int*SearchResult) list
-    ActiveModifierList : (int * ActiveModifiers) list
-    CalculationResult : (int* string []) list
+    ActiveModifierList : (int*ActiveModifiers) list
+    CalculationResult : (int*string []) list
+    Modal : ReactElement
+    ModalInputList : (string * (int * string) []) list
     IDCounter : int
     }
 
@@ -178,6 +181,9 @@ type Msg =
 | ResetActiveWeapon of int
 | ResetActiveModifications of int
 | CloseTab of int
+| ActivateModal of ReactElement
+| CloseModal
+| UpdateModalInputList of string * (int*string)
 
 let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
     Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
@@ -202,6 +208,10 @@ let init () : Model * Cmd<Msg> =
         ActiveModifierList = []
         //Calculation results, all with id
         CalculationResult = []
+        // Saves all active states and ids for modals 
+        Modal = hiddenModal
+        // List for all modal input arrays (for character, weapon, modification creation)
+        ModalInputList = []
         // will count one up for each tab created
         IDCounter = 0
         }
@@ -389,6 +399,30 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                             ] currentModel.ActiveModifierList)
             }
         nextModel, Cmd.none
+    | _, ActivateModal (modal) ->
+        let toggledModal = if modal = currentModel.Modal then hiddenModal else modal
+        let nextModel = {
+            currentModel with
+                Modal = toggledModal
+            }
+        nextModel, Cmd.none
+    | _, CloseModal ->
+        let nextModel = {
+            currentModel with
+                Modal = hiddenModal
+            }
+        nextModel, Cmd.none
+    | _ , UpdateModalInputList (modalID,(orderID,input)) ->
+        let (modalIDOfInterest,modalInputOfInterest) = List.find (fun (id,activeValues) -> id = modalID) currentModel.ModalInputList
+        let newInputArr =
+            modalInputOfInterest
+            |> Array.filter (fun (id,value) -> id <> orderID)
+            |> Array.append [|orderID,input|]
+        let newModel = {
+            currentModel with
+                ModalInputList = (modalIDOfInterest,newInputArr)::(List.except [(modalIDOfInterest,modalInputOfInterest)] currentModel.ModalInputList)
+            }
+        newModel, Cmd.none  
     //| _ -> currentModel, Cmd.none
 
 let safeComponents =
@@ -714,49 +748,48 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                           ] 
                           [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
         ]
-
-let inputPanel description=
-    Panel.block [ ]
-                [ (*Panel.icon [ ] [ i [ ClassName "fa fa-book" ] [ ] ]*)
-                   Columns.columns [ ]
-                                   [ Column.column []
-                                                   [str description]
-                                     Column.column [ Column.Modifiers [Modifier.IModifier.TextAlignment(Screen.WideScreen,TextAlignment.Right) ] ]
-                                                   [ Control.div [ Control.HasIconLeft ]
-                                                                 [ Input.text [ Input.Size IsSmall
-                                                                                Input.Placeholder "Search" ]
-                                                                   Icon.icon [ Icon.Size IsSmall
-                                                                               Icon.IsLeft ]
-                                                                             [ i [ ClassName "fa fa-search" ] [ ]
-                                                                             ]
-                                                                 ]
-                                                   ]
-                                   ]
+// single input panels used for addModals
+let inputPanel description  placeholder =
+    Level.level [ ]
+                [ Level.left [ ]
+                             [ Level.item [] [str description] ]
+                  Level.right [ ]
+                              [ Control.div [ ]
+                                            [ Input.text [ Input.Size IsSmall 
+                                                           Input.Placeholder placeholder]
+                                            ]
+                              ]
                 ]
+// content for add character modal
+let addCharacterFormat =
+    Panel.panel [ ]
+                [ inputPanel "Character Name:" ".. best character name"
+                  inputPanel "Base Attack Bonus:"  ".. e.g. 4"
+                  inputPanel "Strength:" ".. ability score, e.g. 18"
+                  inputPanel "Dexterity:" ".. ability score, e.g. 18"
+                  inputPanel "Constitution:" ".. ability score, e.g. 18" 
+                  inputPanel "Intelligence:" ".. ability score, e.g. 18"
+                  inputPanel "Wisdom:" ".. ability score, e.g. 18"
+                  inputPanel "Charisma:" ".. ability score, e.g. 18"
+                  inputPanel "Character Description:" ".. description" ]  
 
-let addCharacterButton = Container.container [ ]
-                                     [Button.button [ ]
-                                                    [ str "Hello, i am a test button" ]
-                                      Columns.columns [ ]
-                                                      [ Column.column [ Column.Offset (Screen.All, Column.Is3)
-                                                                        Column.Width (Screen.All, Column.Is6) ]
-                                                                      [ Panel.panel [ ]
-                                                                                    [ Panel.heading [ ] [ str "Create Character"]
-                                                                                      inputPanel "Character Name:"
-                                                                                      inputPanel "Base Attack Bonus:"
-                                                                                      inputPanel "Strength:"
-                                                                                      inputPanel "Dexterity:"
-                                                                                      inputPanel "Constitution:"
-                                                                                      inputPanel "Intelligence:"
-                                                                                      inputPanel "Wisdom:"
-                                                                                      inputPanel "Charisma:"
-                                                                                      inputPanel "Character Description:"
-                                                                                      Panel.block [ ]
-                                                                                        [ Button.button [ Button.Color IsPrimary
-                                                                                                          Button.IsOutlined
-                                                                                                          Button.IsFullWidth ]
-                                                                                                        [ str "Add to Collection" ] ] ] ] ]
-                                     ]
+// add character modal
+let addCharacterModal closeDisplay =
+    Modal.modal [ Modal.IsActive true
+                ]
+        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Character Creator" ]
+                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
+              Modal.Card.body [ ]
+                              [ addCharacterFormat ]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.Color IsSuccess ]
+                    [ str "Add Character" ]
+                  Button.button [ Button.OnClick closeDisplay ]
+                                [ str "Cancel" ] ] ] ]
 
 let footerContainer =
     Container.container [ ]
@@ -765,6 +798,7 @@ let footerContainer =
                 [ safeComponents ]
               p [ ]
                 [ ] ] ]
+
 
 let view (model : Model) (dispatch : Msg -> unit) =
             
@@ -816,10 +850,18 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     )   
                                                   ]              
                                 ]
-            // Control elments of the UI
+            // Control elment of the modal UI
             Card.card [ ]
-                      [ testButton
+                      [ div [ ]
+                            [ Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal)
+                                                                                               )
+                                                                                )
+                                                             )
+                                                             
+                                            ]
+                                            [ str "Show card modal" ] ]
                       ]
+            model.Modal
             footer [ ClassName "footer" ]
                    [ footerContainer ]
         ]
