@@ -166,6 +166,7 @@ type Model = {
     CalculationResult : (int*string []) list
     Modal : ReactElement
     ModalInputList : (string * (int * string) []) list
+    CharacterArray : CharacterStats []
     IDCounter : int
     }
 
@@ -212,6 +213,7 @@ let init () : Model * Cmd<Msg> =
         Modal = hiddenModal
         // List for all modal input arrays (for character, weapon, modification creation)
         ModalInputList = []
+        CharacterArray = exmpCharArr
         // will count one up for each tab created
         IDCounter = 0
         }
@@ -276,7 +278,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             ///defines searchResult
          let filter =
              match intForWhichTab with
-             | 1 -> ((searchForCharacters exmpCharArr searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName x.CharacterDescription) )
+             | 1 -> ((searchForCharacters currentModel.CharacterArray searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName x.CharacterDescription) )
              | 2 -> ((searchForWeapons exmpWeaponArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | 3 -> ((searchForModifications ModificationArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | _ -> failwith "unknown case, you should not get this 004"                                                                                                                                
@@ -413,7 +415,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             }
         nextModel, Cmd.none
     | _ , UpdateModalInputList (modalID,(orderID,input)) ->
-        let (modalIDOfInterest,modalInputOfInterest) = List.find (fun (id,activeValues) -> id = modalID) currentModel.ModalInputList
+        let (modalIDOfInterest,modalInputOfInterest) = List.tryFind (fun (id,activeValues) -> id = modalID) currentModel.ModalInputList
+                                                        |> fun x -> if x.IsSome then x.Value else modalID,[||]
         let newInputArr =
             modalInputOfInterest
             |> Array.filter (fun (id,value) -> id <> orderID)
@@ -473,9 +476,6 @@ let doHideShow (tabId:string) (cardID:int) =
 let doHide (tabId:string) (cardID:int) =
     let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
     x?style?display <- "none"
-
-let content = div []
-                  [str "this is a test"]
 
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
     let getIntForTabCategory =
@@ -749,32 +749,38 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                           [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
         ]
 // single input panels used for addModals
-let inputPanel description  placeholder =
+let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
     Level.level [ ]
                 [ Level.left [ ]
                              [ Level.item [] [str description] ]
                   Level.right [ ]
                               [ Control.div [ ]
                                             [ Input.text [ Input.Size IsSmall 
-                                                           Input.Placeholder placeholder]
+                                                           Input.Placeholder placeholder
+                                                           Input.OnChange (fun e -> let x = !!e.target?value
+                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
+                                                                                             )
+                                                                          )
+                                                         ]
+                                              
                                             ]
                               ]
                 ]
 // content for add character modal
-let addCharacterFormat =
+let addCharacterFormat (dispatch : Msg -> unit) =
     Panel.panel [ ]
-                [ inputPanel "Character Name:" ".. best character name"
-                  inputPanel "Base Attack Bonus:"  ".. e.g. 4"
-                  inputPanel "Strength:" ".. ability score, e.g. 18"
-                  inputPanel "Dexterity:" ".. ability score, e.g. 18"
-                  inputPanel "Constitution:" ".. ability score, e.g. 18" 
-                  inputPanel "Intelligence:" ".. ability score, e.g. 18"
-                  inputPanel "Wisdom:" ".. ability score, e.g. 18"
-                  inputPanel "Charisma:" ".. ability score, e.g. 18"
-                  inputPanel "Character Description:" ".. description" ]  
+                [ inputPanel "Character Name:" ".. best character name" 1 dispatch
+                  inputPanel "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
+                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
+                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
+                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
+                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
+                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
+                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
+                  inputPanel "Character Description:" ".. description" 9 dispatch]  
 
 // add character modal
-let addCharacterModal closeDisplay =
+let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                 ]
         [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
@@ -784,10 +790,10 @@ let addCharacterModal closeDisplay =
                     [ str "Character Creator" ]
                   Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
               Modal.Card.body [ ]
-                              [ addCharacterFormat ]
+                              [ addCharacterFormat dispatch]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.Color IsSuccess ]
-                    [ str "Add Character" ]
+                                [ str "Add Character" ]
                   Button.button [ Button.OnClick closeDisplay ]
                                 [ str "Cancel" ] ] ] ]
 
@@ -853,7 +859,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             // Control elment of the modal UI
             Card.card [ ]
                       [ div [ ]
-                            [ Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal)
+                            [ Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch
                                                                                                )
                                                                                 )
                                                              )
@@ -862,6 +868,8 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                             [ str "Show card modal" ] ]
                       ]
             model.Modal
+            str (if List.isEmpty model.ModalInputList then "still empty" else (snd (snd (model.ModalInputList |> List.head)).[0]) )
+
             footer [ ClassName "footer" ]
                    [ footerContainer ]
         ]
