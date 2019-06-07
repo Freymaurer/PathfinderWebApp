@@ -178,15 +178,17 @@ type Msg =
 | UpdateSearchBarList of int * int * string
 | UpdateSearchResultList of int * int
 | UpdateActiveModifierList of int * int * string
-| UpdateActiveModifierListOnlySize of int*string
+| DeleteSearchResultFromActiveArray of int * string
+| UpdateActiveModifierListOnlySize of int * string
 | ResetActiveWeapon of int
 | ResetActiveModifications of int
 | CloseTab of int
 | ActivateModal of ReactElement
 | CloseModal
 | UpdateModalInputList of string * (int*string)
+| AddModalInputToCharacterArray
 
-let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
+let createActivateSearchResultButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
     Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
                     Button.OnClick (fun _ -> dispatch (UpdateActiveModifierList (id,intForWhichTab,searchForName)
                                                       )
@@ -194,6 +196,17 @@ let createInsertButton id intForWhichTab (searchForName:string) (dispatch : Msg 
                     Button.Color IsSuccess; Button.IsInverted
                   ]
                   [ str (sprintf "add %s" searchForName)]
+
+let deleteSearchResultFromActiveArrayButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
+    Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
+                    Button.OnClick (fun _ -> dispatch (UpdateActiveModifierList (id,intForWhichTab,searchForName)
+                                                      )
+                                   )
+                    Button.Color IsDanger; Button.IsInverted
+                  ]
+                  [ Icon.icon [ Icon.Size IsSmall ]
+                              [ i [ClassName "fa fa-times-circle"] [] ]
+                  ]
 
 
 // defines the initial state and initial command (= side-effect) of the application
@@ -309,7 +322,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             List.tryFind ( fun (index,values) -> index = id) currentModel.ActiveModifierList
             |> fun x -> snd x.Value
         let searchCharArr (str:string)=
-            exmpCharArr
+            currentModel.CharacterArray
             |> Array.tryFind (fun x -> x.CharacterName = str)
             |> fun x -> if x.IsNone then failwith "Error 005" else x.Value
         let searchWeaponArr (str:string)=
@@ -335,6 +348,66 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                          ] currentModel.ActiveModifierList)
             }
         nextModel,Cmd.none
+    //| _, DeleteSearchResultFromActiveArray (intForWhichTab,searchForString) ->
+    //    let rmCharFromArr (str:string)=
+    //        let newActiveArray =
+    //            currentModel.CharacterArray
+    //            |> Array.filter (fun x -> x.CharacterName <> str)
+    //        let newActiveModifierList =
+    //            currentModel.ActiveModifierList
+    //            |> List.map (fun (x,activeMod) -> let replacedChar = {
+    //                                                activeMod with
+    //                                                    ActiveCharacter = EmptyChar }
+    //                                              if activeMod.ActiveCharacter.CharacterName = str
+    //                                              then x,replacedChar
+    //                                              else x,activeMod 
+    //                        )
+    //        let newSearchResult =
+    //            currentModel.SearchResultList
+    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultChar)
+    //        newActiveArray,newActiveModifierList,newSearchResult
+    //    let rmWeaponFromArr (str:string)=
+    //        let newActiveArray =
+    //            exmpWeaponArr
+    //            |> Array.filter (fun x -> x.Name <> str)
+    //        let newActiveModifierList =
+    //            currentModel.ActiveModifierList
+    //            |> List.map (fun (x,activeMod) -> let rmWeap = {
+    //                                                activeMod with
+    //                                                    ActiveWeapons = List.filter (fun x -> x.Name <> str) activeMod.ActiveWeapons }
+    //                                              x,rmWeap
+    //                        )
+    //        let newSearchResult =
+    //            currentModel.SearchResultList
+    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultWeapons )
+    //        newActiveArray,newActiveModifierList,newSearchResult
+    //    let rmModificationFromArr (str:string)=
+    //        let newActiveArray =
+    //            CompleteModificationArr
+    //            |> Array.filter (fun x -> x.Name <> str)
+    //        let newActiveModifierList =
+    //            currentModel.ActiveModifierList
+    //            |> List.map (fun (x,activeMod) -> let rmModification = {
+    //                                                activeMod with
+    //                                                    ActiveModifications = List.filter (fun x -> x.Name <> str) activeMod.ActiveModifications }
+    //                                              x,rmModification
+    //                        )
+    //        let newSearchResult =
+    //            currentModel.SearchResultList
+    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultModifications )
+    //        newActiveArray,newActiveModifierList,newSearchResult
+
+    //    let updatedModifiers =
+    //        match intForWhichTab with
+    //        | 1 -> rmCharFromArr searchForString
+    //        | 2 -> rmWeaponFromArr searchForString
+    //        | 3 -> rmModificationFromArr searchForString
+    //        | _ -> failwith "Error 008"
+    //    let nextModel = {
+    //        currentModel with
+    //            ActiveModifierList = 
+    //        }
+    //    nextModel,Cmd.none
     | _, UpdateActiveModifierListOnlySize (id,sizeString) ->
         let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
                                       |> fun x -> snd x.Value
@@ -414,7 +487,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 Modal = hiddenModal
             }
         nextModel, Cmd.none
-    | _ , UpdateModalInputList (modalID,(orderID,input)) ->
+    | _, UpdateModalInputList (modalID,(orderID,input)) ->
         let (modalIDOfInterest,modalInputOfInterest) = List.tryFind (fun (id,activeValues) -> id = modalID) currentModel.ModalInputList
                                                         |> fun x -> if x.IsSome then x.Value else modalID,[||]
         let newInputArr =
@@ -425,7 +498,26 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel with
                 ModalInputList = (modalIDOfInterest,newInputArr)::(List.except [(modalIDOfInterest,modalInputOfInterest)] currentModel.ModalInputList)
             }
-        newModel, Cmd.none  
+        newModel, Cmd.none
+    | _, AddModalInputToCharacterArray ->
+        let (modalIDOfInterest,modalInputOfInterest) =
+            currentModel.ModalInputList
+            |> List.tryFind (fun (x,y) -> x = "addCharacter")
+            |> fun x -> if x.IsSome then x.Value else failwith "Not all input fields are filled for character creation!"
+        let characterStat =
+            modalInputOfInterest
+            |> fun x -> if x.Length <> 9 then failwith "Not all input fields are filled for character creation!" else x
+            |> Array.sortBy fst
+            |> Array.map snd
+            |> fun x -> createCharacterStats x.[0] (int x.[1]) (int x.[2]) (int x.[3]) (int x.[4]) (int x.[5]) (int x.[6]) (int x.[7]) 0 0 x.[8]
+        let newModel = {
+            currentModel with
+                CharacterArray = Array.append currentModel.CharacterArray [|characterStat|]
+                Modal = hiddenModal
+            }
+        newModel, Cmd.none
+
+        
     //| _ -> currentModel, Cmd.none
 
 let safeComponents =
@@ -477,6 +569,70 @@ let doHide (tabId:string) (cardID:int) =
     let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
     x?style?display <- "none"
 
+// single input panels used for addModals
+let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
+    Level.level [ ]
+                [ Level.left [ ]
+                             [ Level.item [] [str description] ]
+                  Level.right [ ]
+                              [ Control.div [ ]
+                                            [ Input.text [ Input.Size IsSmall 
+                                                           Input.Placeholder placeholder
+                                                           Input.OnChange (fun e -> let x = !!e.target?value
+                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
+                                                                                             )
+                                                                          )
+                                                         ]
+                                              
+                                            ]
+                              ]
+                ]
+// content for add character modal
+let addCharacterFormat (dispatch : Msg -> unit) =
+    Panel.panel [ ]
+                [ inputPanel "Character Name:" ".. best character name" 1 dispatch
+                  inputPanel "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
+                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
+                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
+                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
+                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
+                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
+                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
+                  inputPanel "Character Description:" ".. description" 9 dispatch]  
+
+// add character modal
+let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                ]
+        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Character Creator" ]
+                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
+              Modal.Card.body [ ]
+                              [ addCharacterFormat dispatch]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.Color IsSuccess
+                                  Button.OnClick (fun _ -> dispatch AddModalInputToCharacterArray
+                                                  )
+                                ]
+                                [ str "Add Character" ]
+                  Button.button [ Button.OnClick closeDisplay ]
+                                [ str "Cancel" ] ] ] ]
+// Button activating addCharacterModal
+let addCharacterButton dispatch =
+    Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
+                                                      )
+                                   )
+                  ]
+                  [ str "Show card modal" ]
+
+let activateAddCharacterDispatch dispatch =
+    ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
+                  
+    
+
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
     let getIntForTabCategory =
         match tabCategory with
@@ -486,7 +642,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
         | _ -> failwith "unknown case, you should not get this 003"
     let searchResultElement =
         specificSearchResults
-        |> Array.map (fun subSearch -> subSearch,createInsertButton id getIntForTabCategory subSearch.ResultName dispatch)
+        |> Array.map (fun subSearch -> subSearch,createActivateSearchResultButton id getIntForTabCategory subSearch.ResultName dispatch)
         |> Array.map (fun (subSearch,button) -> tr [ ]
                                                    [ th [ ] [ str (sprintf "%s" subSearch.ResultName) ]
                                                      th [ ]
@@ -509,14 +665,12 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                [ Control.div [ ]
                                                                                              [Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
                                                                                                               Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
-                                                                                                              Button.OnClick (fun _ -> let getIntForTabCategory =
-                                                                                                                                           match tabCategory with
-                                                                                                                                           | "characters" -> 1
-                                                                                                                                           | "weapons" -> 2
-                                                                                                                                           | "modifications" -> 3
-                                                                                                                                           | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                                       dispatch (UpdateSearchResultList (id, getIntForTabCategory))
-
+                                                                                                              Button.OnClick (fun _ -> match tabCategory with
+                                                                                                                                       // Control elment of the modal UI
+                                                                                                                                       | "characters" -> dispatch (activateAddCharacterDispatch dispatch)
+                                                                                                                                       | "weapons" -> dispatch (activateAddCharacterDispatch dispatch)
+                                                                                                                                       | "modifications" -> dispatch (activateAddCharacterDispatch dispatch)
+                                                                                                                                       | _ -> failwith "unknown case, you should not get this 003"
                                                                                                                               )
                                                                                                             ]
                                                                                                             [ Icon.icon [ Icon.Size IsSmall ]
@@ -748,54 +902,6 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                           ] 
                           [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
         ]
-// single input panels used for addModals
-let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
-    Level.level [ ]
-                [ Level.left [ ]
-                             [ Level.item [] [str description] ]
-                  Level.right [ ]
-                              [ Control.div [ ]
-                                            [ Input.text [ Input.Size IsSmall 
-                                                           Input.Placeholder placeholder
-                                                           Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
-                                                                                             )
-                                                                          )
-                                                         ]
-                                              
-                                            ]
-                              ]
-                ]
-// content for add character modal
-let addCharacterFormat (dispatch : Msg -> unit) =
-    Panel.panel [ ]
-                [ inputPanel "Character Name:" ".. best character name" 1 dispatch
-                  inputPanel "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
-                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
-                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
-                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
-                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
-                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
-                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
-                  inputPanel "Character Description:" ".. description" 9 dispatch]  
-
-// add character modal
-let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
-    Modal.modal [ Modal.IsActive true
-                ]
-        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
-          Modal.Card.card [ ]
-            [ Modal.Card.head [ ]
-                [ Modal.Card.title [ ]
-                    [ str "Character Creator" ]
-                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
-              Modal.Card.body [ ]
-                              [ addCharacterFormat dispatch]
-              Modal.Card.foot [ ]
-                [ Button.button [ Button.Color IsSuccess ]
-                                [ str "Add Character" ]
-                  Button.button [ Button.OnClick closeDisplay ]
-                                [ str "Cancel" ] ] ] ]
 
 let footerContainer =
     Container.container [ ]
@@ -856,22 +962,9 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     )   
                                                   ]              
                                 ]
-            // Control elment of the modal UI
-            Card.card [ ]
-                      [ div [ ]
-                            [ Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch
-                                                                                               )
-                                                                                )
-                                                             )
-                                                             
-                                            ]
-                                            [ str "Show card modal" ] ]
-                      ]
-            model.Modal
-            str (if List.isEmpty model.ModalInputList then "still empty" else (snd (snd (model.ModalInputList |> List.head)).[0]) )
-
             footer [ ClassName "footer" ]
                    [ footerContainer ]
+            model.Modal
         ]
 
 

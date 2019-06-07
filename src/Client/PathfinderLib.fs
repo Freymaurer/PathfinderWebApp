@@ -268,6 +268,20 @@ module Library =
             WebInputParameter   : InputParameter []
             }
 
+        let createCharacterStats name bab str dex con int wis cha cs1 cs2 charDesc= {
+            CharacterName        = name
+            BAB                  = bab
+            Strength             = str
+            Dexterity            = dex
+            Constitution         = con
+            Intelligence         = int
+            Wisdom               = wis
+            Charisma             = cha
+            CasterLevel1         = cs1
+            CasterLevel2         = cs2
+            CharacterDescription = charDesc
+            }
+
     /// library for all prebuild characters; this is mostly for personal use or functions as an example
     module Characters =
 
