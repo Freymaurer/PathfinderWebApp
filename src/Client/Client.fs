@@ -167,6 +167,8 @@ type Model = {
     Modal : ReactElement
     ModalInputList : (string * (int * string) []) list
     CharacterArray : CharacterStats []
+    WeaponArray : Weapon []
+    ModificationArray : AttackModification []
     IDCounter : int
     }
 
@@ -197,9 +199,9 @@ let createActivateSearchResultButton id intForWhichTab (searchForName:string) (d
                   ]
                   [ str (sprintf "add %s" searchForName)]
 
-let deleteSearchResultFromActiveArrayButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
-    Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
-                    Button.OnClick (fun _ -> dispatch (UpdateActiveModifierList (id,intForWhichTab,searchForName)
+let deleteSearchResultFromActiveArrayButton intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
+    Button.button [ Button.Props [ ]
+                    Button.OnClick (fun _ -> dispatch (DeleteSearchResultFromActiveArray (intForWhichTab,searchForName)
                                                       )
                                    )
                     Button.Color IsDanger; Button.IsInverted
@@ -227,6 +229,8 @@ let init () : Model * Cmd<Msg> =
         // List for all modal input arrays (for character, weapon, modification creation)
         ModalInputList = []
         CharacterArray = exmpCharArr
+        WeaponArray = exmpWeaponArr
+        ModificationArray = CompleteModificationArr
         // will count one up for each tab created
         IDCounter = 0
         }
@@ -348,66 +352,87 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                          ] currentModel.ActiveModifierList)
             }
         nextModel,Cmd.none
-    //| _, DeleteSearchResultFromActiveArray (intForWhichTab,searchForString) ->
-    //    let rmCharFromArr (str:string)=
-    //        let newActiveArray =
-    //            currentModel.CharacterArray
-    //            |> Array.filter (fun x -> x.CharacterName <> str)
-    //        let newActiveModifierList =
-    //            currentModel.ActiveModifierList
-    //            |> List.map (fun (x,activeMod) -> let replacedChar = {
-    //                                                activeMod with
-    //                                                    ActiveCharacter = EmptyChar }
-    //                                              if activeMod.ActiveCharacter.CharacterName = str
-    //                                              then x,replacedChar
-    //                                              else x,activeMod 
-    //                        )
-    //        let newSearchResult =
-    //            currentModel.SearchResultList
-    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultChar)
-    //        newActiveArray,newActiveModifierList,newSearchResult
-    //    let rmWeaponFromArr (str:string)=
-    //        let newActiveArray =
-    //            exmpWeaponArr
-    //            |> Array.filter (fun x -> x.Name <> str)
-    //        let newActiveModifierList =
-    //            currentModel.ActiveModifierList
-    //            |> List.map (fun (x,activeMod) -> let rmWeap = {
-    //                                                activeMod with
-    //                                                    ActiveWeapons = List.filter (fun x -> x.Name <> str) activeMod.ActiveWeapons }
-    //                                              x,rmWeap
-    //                        )
-    //        let newSearchResult =
-    //            currentModel.SearchResultList
-    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultWeapons )
-    //        newActiveArray,newActiveModifierList,newSearchResult
-    //    let rmModificationFromArr (str:string)=
-    //        let newActiveArray =
-    //            CompleteModificationArr
-    //            |> Array.filter (fun x -> x.Name <> str)
-    //        let newActiveModifierList =
-    //            currentModel.ActiveModifierList
-    //            |> List.map (fun (x,activeMod) -> let rmModification = {
-    //                                                activeMod with
-    //                                                    ActiveModifications = List.filter (fun x -> x.Name <> str) activeMod.ActiveModifications }
-    //                                              x,rmModification
-    //                        )
-    //        let newSearchResult =
-    //            currentModel.SearchResultList
-    //            |> List.map (fun (id,result) -> Array.filter (fun x -> x.ResultName <> str) result.SearchResultModifications )
-    //        newActiveArray,newActiveModifierList,newSearchResult
+    | _, DeleteSearchResultFromActiveArray (intForWhichTab,searchForString) ->
+        let rmCharFromArr (str:string)=
+            let newActiveArray =
+                currentModel.CharacterArray
+                |> Array.filter (fun x -> x.CharacterName <> str)
+            let newActiveModifierList =
+                currentModel.ActiveModifierList
+                |> List.map (fun (x,activeMod) -> let replacedChar = {
+                                                    activeMod with
+                                                        ActiveCharacter = EmptyChar }
+                                                  if activeMod.ActiveCharacter.CharacterName = str
+                                                  then x,replacedChar
+                                                  else x,activeMod 
+                            )
+            let newSearchResult =
+                currentModel.SearchResultList
+                |> List.map (fun (id,result) -> let newSearchResult = {
+                                                        result with
+                                                            SearchResultChar = Array.filter (fun x -> x.ResultName <> str) result.SearchResultChar
+                                                        }
+                                                id,newSearchResult
+                            )
+            newActiveArray,newActiveModifierList,newSearchResult
+        let rmWeaponFromArr (str:string)=
+            let newActiveArray =
+                exmpWeaponArr
+                |> Array.filter (fun x -> x.Name <> str)
+            let newActiveModifierList =
+                currentModel.ActiveModifierList
+                |> List.map (fun (x,activeMod) -> let rmWeap = {
+                                                    activeMod with
+                                                        ActiveWeapons = List.filter (fun x -> x.Name <> str) activeMod.ActiveWeapons }
+                                                  x,rmWeap
+                            )
+            let newSearchResult =
+                currentModel.SearchResultList
+                |> List.map (fun (id,result) -> let newSearchResult = {
+                                                    result with
+                                                        SearchResultWeapons = Array.filter (fun x -> x.ResultName <> str) result.SearchResultWeapons }
+                                                id,newSearchResult
+                            )
+            newActiveArray,newActiveModifierList,newSearchResult
+        let rmModificationFromArr (str:string)=
+            let newActiveArray =
+                CompleteModificationArr
+                |> Array.filter (fun x -> x.Name <> str)
+            let newActiveModifierList =
+                currentModel.ActiveModifierList
+                |> List.map (fun (x,activeMod) -> let rmModification = {
+                                                    activeMod with
+                                                        ActiveModifications = List.filter (fun x -> x.Name <> str) activeMod.ActiveModifications }
+                                                  x,rmModification
+                            )
+            let newSearchResult =
+                currentModel.SearchResultList
+                |> List.map (fun (id,result) -> let newSearchResult = {
+                                                    result with
+                                                        SearchResultModifications = Array.filter (fun x -> x.ResultName <> str) result.SearchResultModifications }
+                                                id,newSearchResult
+                            )
+            newActiveArray,newActiveModifierList,newSearchResult
 
-    //    let updatedModifiers =
-    //        match intForWhichTab with
-    //        | 1 -> rmCharFromArr searchForString
-    //        | 2 -> rmWeaponFromArr searchForString
-    //        | 3 -> rmModificationFromArr searchForString
-    //        | _ -> failwith "Error 008"
-    //    let nextModel = {
-    //        currentModel with
-    //            ActiveModifierList = 
-    //        }
-    //    nextModel,Cmd.none
+        let nextModel =
+            match intForWhichTab with
+            | 1 -> rmCharFromArr searchForString
+                   |> fun (charArr,activeModList,searchResultList) -> {currentModel with
+                                                                        CharacterArray = charArr
+                                                                        ActiveModifierList = activeModList
+                                                                        SearchResultList = searchResultList}
+            | 2 -> rmWeaponFromArr searchForString
+                   |> fun (weapArr,activeModList,searchResultList) -> {currentModel with
+                                                                               WeaponArray = weapArr
+                                                                               ActiveModifierList = activeModList
+                                                                               SearchResultList = searchResultList}
+            | 3 -> rmModificationFromArr searchForString
+                   |> fun (modArr,activeModList,searchResultList) -> {currentModel with
+                                                                        ModificationArray = modArr
+                                                                        ActiveModifierList = activeModList
+                                                                        SearchResultList = searchResultList}
+            | _ -> failwith "Error 010"
+        nextModel,Cmd.none
     | _, UpdateActiveModifierListOnlySize (id,sizeString) ->
         let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
                                       |> fun x -> snd x.Value
@@ -650,6 +675,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                     [ str (sprintf "%s" subSearch.ResultDescription) ] 
                                                         ]
                                                      th [ ] [ button ]
+                                                     deleteSearchResultFromActiveArrayButton getIntForTabCategory subSearch.ResultName dispatch
                                                    ]
                      )
 
