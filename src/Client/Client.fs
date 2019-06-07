@@ -175,6 +175,7 @@ type Model = {
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
 type Msg =
+| AddIDCounterTesting
 | CalculateStandardAttackAction of int
 | AddTabToTabList of (SearchResult -> string [] -> ActiveModifiers -> ReactElement)
 | UpdateSearchBarList of int * int * string
@@ -210,6 +211,12 @@ let deleteSearchResultFromActiveArrayButton intForWhichTab (searchForName:string
                               [ i [ClassName "fa fa-times-circle"] [] ]
                   ]
 
+let [<Literal>] ENTER_KEY = 13.
+
+let onEnter msg dispatch =
+    OnKeyDown (fun ev ->
+        if ev.keyCode = ENTER_KEY then
+            dispatch msg)
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
@@ -242,6 +249,11 @@ let init () : Model * Cmd<Msg> =
 // these commands in turn, can dispatch messages to which the update function will react.
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match currentModel, msg with
+    | _, AddIDCounterTesting ->
+        let nextModel = {
+            currentModel with
+                IDCounter = currentModel.IDCounter + 10 }
+        nextModel,Cmd.none
     | _, AddTabToTabList (tab)->
         let nextModel = {
             currentModel with
@@ -666,7 +678,8 @@ let inputPanelWeaponDmg description placeholder placeholder2 inputID inputID2 (d
                              [ Level.item [] [str description] ]
                   Level.right [ ]
                               [ Level.level [ ]
-                                            [ Input.text [ Input.Size IsSmall 
+                                            [ Input.text [ Input.Props [ Style [ CSSProp.Width "40px"] ]
+                                                           Input.Size IsSmall 
                                                            Input.Placeholder placeholder
                                                            Input.OnChange (fun e -> let x = !!e.target?value
                                                                                     dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
@@ -674,49 +687,44 @@ let inputPanelWeaponDmg description placeholder placeholder2 inputID inputID2 (d
                                                                           )
                                                          ]
                                               str "d"
-                                              Input.text [ Input.Size IsSmall 
+                                              Input.text [ Input.Props [ Style [ CSSProp.Width "40px"] ]
+                                                           Input.Size IsSmall 
                                                            Input.Placeholder placeholder2
                                                            Input.OnChange (fun e -> let x = !!e.target?value
                                                                                     dispatch (UpdateModalInputList ("addCharacter",(inputID2,x))
                                                                                              )
                                                                           )
                                                          ]
-                                                         /// make this a select
-                                              Dropdown.dropdown [ Dropdown.IsRight
-                                                                  Dropdown.IsHoverable ]
-                                                                [ div [ ]
-                                                                      [ Button.button [ Button.Color IsBlack
-                                                                                        Button.IsInverted ]
-                                                                                      [ span [] [ str "Damage Type" ]
-                                                                                        Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
-                                                                                      ]
-                                                                      ]
-                                                                  Dropdown.menu [ ]
-                                                                    [ Dropdown.content [ ]
-                                                                        [ dropdownButtonDamageTypes "Bludgeoning"
-                                                                          dropdownButtonDamageTypes "Piercing"
-                                                                          dropdownButtonDamageTypes "Slashing"
-                                                                          Dropdown.divider [ ]
-                                                                          dropdownButtonDamageTypes "Bludgeoning & Slashing"
-                                                                          dropdownButtonDamageTypes "Bludgeoning & Piercing"
-                                                                          dropdownButtonDamageTypes "Piercing & Slashing"
-                                                                          Dropdown.divider [ ]
-                                                                          dropdownButtonDamageTypes "Piercing & Slashing & Bludgeoning"
-                                                                          Dropdown.divider [ ]
-                                                                          dropdownButtonDamageTypes "Acid"      
-                                                                          dropdownButtonDamageTypes "Fire"       
-                                                                          dropdownButtonDamageTypes "Cold" 
-                                                                          dropdownButtonDamageTypes "Electricity"
-                                                                          dropdownButtonDamageTypes "Precision"
-                                                                          dropdownButtonDamageTypes "Untyped"
-                                                                          dropdownButtonDamageTypes "Vital Strike Damage"
-                                                                        ]
-                                                                    ]
-                                                                ]
-                                            ]
+                                              Select.select [ Select.Color IsWhite
+                                                              Select.Size ISize.IsSmall
+                                                              Select.IsInline]
+                                                            [ select [ DefaultValue "Untyped"]
+                                                                [ option [ Props.OnClick (fun _ -> dispatch AddIDCounterTesting)
+                                                                           Value "Untyped" ] [ str "Untyped" ]
+                                                                  option [ Props.Disabled true] [ str "___________________________" ]
+                                                                  option [ Value "2"] [ str "Bludgeoning" ]
+                                                                  option [ Value "3"] [ str "Piercing" ]
+                                                                  option [ Value "3"] [ str "Slashing" ]
+                                                                  option [ Props.Disabled true] [ str "___________________________" ]
+                                                                  option [ Value "3"] [ str "Bludgeoning & Slashing" ]
+                                                                  option [ Value "3"] [ str "Bludgeoning & Piercing" ]
+                                                                  option [ Value "3"] [ str "Piercing & Slashing" ]
+                                                                  option [ Props.Disabled true] [ str "___________________________" ]
+                                                                  option [ Value "3"] [ str "Piercing & Slashing & Bludgeoning" ]
+                                                                  option [ Props.Disabled true] [ str "___________________________" ]
+                                                                  option [ Value "3"] [ str "Acid" ]
+                                                                  option [ Value "3"] [ str "Fire" ]
+                                                                  option [ Value "3"] [ str "Cold" ]
+                                                                  option [ Value "3"] [ str "Electricity" ]
+                                                                  option [ Value "3"] [ str "Precision" ]
+                                                                  option [ Value "3"] [ str "Untyped" ]
+                                                                  option [ Value "3"] [ str "Vital Strike Damage" ]
+                                                                ]                           
+                                                            ]
+                                            ]                           
+
                               ]
                 ]
-
 // content for add character modal
 let addWeaponModalContent (dispatch : Msg -> unit) =
     Panel.panel [ ]
@@ -815,7 +823,8 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                              [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
                                                                                                             Input.OnChange (fun e -> let x = !!e.target?value
                                                                                                                                      dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
-                                                                                                                           ) 
+                                                                                                                           )
+                                                                                                            Input.Props [ onEnter (UpdateSearchResultList (id, getIntForTabCategory)) dispatch ]
                                                                                                           ] 
                                                                                              ]
                                                                                  Control.div [ ]
@@ -826,7 +835,6 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                                                                             | "modifications" -> 3
                                                                                                                                             | _ -> failwith "unknown case, you should not get this 003"
                                                                                                                                         dispatch (UpdateSearchResultList (id, getIntForTabCategory))
-
                                                                                                                               )
                                                                                                              ]
                                                                                                              [ str "Search" ]
@@ -950,8 +958,6 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                                                 ]
                                                                   ] 
                                                   ]
-                                       //Level.item []
-                                       //           [ str "Test2" ]
                                      ]
                          Notification.notification [ Notification.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left)] ]
                                                    specificCalculationResultsFinalized
@@ -1104,6 +1110,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                           [ Icon.icon [ Icon.Size IsSmall ]
                                       [ i [ClassName "fas fa-plus-circle"] [] ] ]
             
+            str (string model.IDCounter)
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal
