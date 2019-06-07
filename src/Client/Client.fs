@@ -594,6 +594,11 @@ let doHide (tabId:string) (cardID:int) =
     let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
     x?style?display <- "none"
 
+
+///////////////////////////////////////////////////////////////////////// MODALs //////////////////////////////////////////////////////////////
+
+/////////////////// Add Character Modal ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // single input panels used for addModals
 let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
     Level.level [ ]
@@ -613,7 +618,7 @@ let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
                               ]
                 ]
 // content for add character modal
-let addCharacterFormat (dispatch : Msg -> unit) =
+let addCharacterModalContent (dispatch : Msg -> unit) =
     Panel.panel [ ]
                 [ inputPanel "Character Name:" ".. best character name" 1 dispatch
                   inputPanel "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
@@ -636,7 +641,7 @@ let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
                     [ str "Character Creator" ]
                   Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
               Modal.Card.body [ ]
-                              [ addCharacterFormat dispatch]
+                              [ addCharacterModalContent dispatch]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.Color IsSuccess
                                   Button.OnClick (fun _ -> dispatch AddModalInputToCharacterArray
@@ -645,18 +650,122 @@ let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
                                 [ str "Add Character" ]
                   Button.button [ Button.OnClick closeDisplay ]
                                 [ str "Cancel" ] ] ] ]
-// Button activating addCharacterModal
-let addCharacterButton dispatch =
-    Button.button [ Button.OnClick (fun _ -> dispatch (ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
-                                                      )
-                                   )
-                  ]
-                  [ str "Show card modal" ]
 
 let activateAddCharacterDispatch dispatch =
     ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
                   
-    
+let dropdownButtonDamageTypes (sizeStr:string) =
+    Dropdown.Item.a [ Dropdown.Item.Props [ (*Props.OnClick (fun _ -> dispatch (UpdateActiveModifierListOnlySize (id,sizeStr)))*) ]
+                         ]
+                    [ str sizeStr]
+/////////////////// Add Weapon Modal ////////////////////////////////////////////////////////////////////////////////////////////////////
+// single input panels used for addModals
+let inputPanelWeaponDmg description placeholder placeholder2 inputID inputID2 (dispatch : Msg -> unit) =
+    Level.level [ ]
+                [ Level.left [ ]
+                             [ Level.item [] [str description] ]
+                  Level.right [ ]
+                              [ Level.level [ ]
+                                            [ Input.text [ Input.Size IsSmall 
+                                                           Input.Placeholder placeholder
+                                                           Input.OnChange (fun e -> let x = !!e.target?value
+                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
+                                                                                             )
+                                                                          )
+                                                         ]
+                                              str "d"
+                                              Input.text [ Input.Size IsSmall 
+                                                           Input.Placeholder placeholder2
+                                                           Input.OnChange (fun e -> let x = !!e.target?value
+                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID2,x))
+                                                                                             )
+                                                                          )
+                                                         ]
+                                                         /// make this a select
+                                              Dropdown.dropdown [ Dropdown.IsRight
+                                                                  Dropdown.IsHoverable ]
+                                                                [ div [ ]
+                                                                      [ Button.button [ Button.Color IsBlack
+                                                                                        Button.IsInverted ]
+                                                                                      [ span [] [ str "Damage Type" ]
+                                                                                        Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
+                                                                                      ]
+                                                                      ]
+                                                                  Dropdown.menu [ ]
+                                                                    [ Dropdown.content [ ]
+                                                                        [ dropdownButtonDamageTypes "Bludgeoning"
+                                                                          dropdownButtonDamageTypes "Piercing"
+                                                                          dropdownButtonDamageTypes "Slashing"
+                                                                          Dropdown.divider [ ]
+                                                                          dropdownButtonDamageTypes "Bludgeoning & Slashing"
+                                                                          dropdownButtonDamageTypes "Bludgeoning & Piercing"
+                                                                          dropdownButtonDamageTypes "Piercing & Slashing"
+                                                                          Dropdown.divider [ ]
+                                                                          dropdownButtonDamageTypes "Piercing & Slashing & Bludgeoning"
+                                                                          Dropdown.divider [ ]
+                                                                          dropdownButtonDamageTypes "Acid"      
+                                                                          dropdownButtonDamageTypes "Fire"       
+                                                                          dropdownButtonDamageTypes "Cold" 
+                                                                          dropdownButtonDamageTypes "Electricity"
+                                                                          dropdownButtonDamageTypes "Precision"
+                                                                          dropdownButtonDamageTypes "Untyped"
+                                                                          dropdownButtonDamageTypes "Vital Strike Damage"
+                                                                        ]
+                                                                    ]
+                                                                ]
+                                            ]
+                              ]
+                ]
+
+// content for add character modal
+let addWeaponModalContent (dispatch : Msg -> unit) =
+    Panel.panel [ ]
+                [ inputPanel "Weapon Name:" ".. cool weapon name" 1 dispatch
+                  inputPanelWeaponDmg "Weapon Damage:" ".. e.g. 1" ".. e.g. 6" 2 3 dispatch
+                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
+                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
+                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
+                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
+                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
+                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
+                  inputPanel "Character Description:" ".. description" 9 dispatch]  
+
+//let glaiveGuisarmePlus1FlamingBurst =  {
+//    Name                = "Glaive-Guisarme +1 flaming"
+//    Damage              = createDamage 1 10 Slashing
+//    DamageBonus         = 1
+//    ExtraDamage         = createDamageHitAndCrit 1 6 Fire 2 10 Fire
+//    BonusAttackRolls    = 1
+//    CriticalRange       = [|20|]
+//    CriticalModifier    = 3
+//    Modifier            = createUsedModifier Strength Strength TwoHanded 1.5
+//    ManufacturedOrNatural = Manufactured
+//    Description         = ""
+//    }
+
+// add Weapon modal
+let addWeaponModal closeDisplay (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                ]
+        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Weapon Creator" ]
+                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
+              Modal.Card.body [ ]
+                              [ addWeaponModalContent dispatch]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.Color IsSuccess
+                                  Button.OnClick (fun _ -> dispatch AddModalInputToCharacterArray
+                                                  )
+                                ]
+                                [ str "Add Weapon" ]
+                  Button.button [ Button.OnClick closeDisplay ]
+                                [ str "Cancel" ] ] ] ]
+
+let test dispatch =
+    ActivateModal (addWeaponModal (fun _ -> dispatch CloseModal) dispatch)
 
 let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
     let getIntForTabCategory =
@@ -988,6 +1097,13 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     )   
                                                   ]              
                                 ]
+            Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
+                            Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
+                            Button.OnClick (fun _ -> dispatch (test dispatch))
+                          ]
+                          [ Icon.icon [ Icon.Size IsSmall ]
+                                      [ i [ClassName "fas fa-plus-circle"] [] ] ]
+            
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal
