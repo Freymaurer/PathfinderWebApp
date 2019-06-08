@@ -10,8 +10,8 @@
         <None Include="style.scss" />
         <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="PathfinderLib.fs" />
-        <Compile Include="BestiaryCalculator.fs" />
         <Compile Include="BestiaryReader.fs" />
+        <Compile Include="BestiaryCalculator.fs" />
         <Compile Include="DPRCalculator.fs" />
         <Compile Include="StandardAttackAction.fs" />
         <Compile Include="FullRoundAttackAction.fs" />

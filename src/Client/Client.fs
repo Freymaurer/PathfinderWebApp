@@ -499,7 +499,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 
     //| _ -> currentModel, Cmd.none
 
-
 let view (model : Model) (dispatch : Msg -> unit) =
             
     div [ ]
@@ -539,7 +538,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                               // contains all above mentioned cards
                                               Content.content [ ]
                                                               [ Content.content [ ]
-                                                                                (   (List.sortByDescending fst model.TabList)
+                                                                                (   (List.sortBy fst model.TabList)
                                                                                     |> List.map (fun (indexTab,tab) -> let relatedSearchResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabSearchResultList)
                                                                                                                        let relatedCalculationResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabCalculationResult)
                                                                                                                        let relatedActiveModifier = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabActiveModifierList)
@@ -558,7 +557,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
             //              [ Icon.icon [ Icon.Size IsSmall ]
             //                          [ i [ClassName "fas fa-plus-circle"] [] ] ]
             //str (string model.IDCounter)
-            //str (string (snd model.TabCalculationResult.Head).Length )
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal
