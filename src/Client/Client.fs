@@ -513,7 +513,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                             navMenu ] ] ]
                 Hero.body [ ]
                   [ Container.container [ Container.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-                      [ img [ Src "https://steemitimages.com/DQmTFWdqNAFhbxQjJ9HZXKx7BkQx52kpRorsnJxkdD1wagZ/Pathfinder.png"
+                      [ img [ Src @"https://raw.githubusercontent.com/Freymaurer/PathfinderWebApp/developer/src/Client/public/PathicianLogoV1.png"(*"https://steemitimages.com/DQmTFWdqNAFhbxQjJ9HZXKx7BkQx52kpRorsnJxkdD1wagZ/Pathfinder.png"*)
                               Alt "Logo" ]
                         Heading.p [ ]
                           [ str "Pathfinder Attack Calculator" ]
