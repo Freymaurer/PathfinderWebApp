@@ -29,130 +29,11 @@ open PathfinderAttackSimulator.FullRoundAttackAction
 open Browser.Types
 open Fulma
 open Fulma
+open PathfinderAttackSimulator
 
-let exmpCharArr = [|Characters.myParrn; Characters.myTumor; Characters.myElemental;|] |> Array.sort
-let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.greatswordParrn; Weapons.enchantedLongswordElemental; Weapons.glaiveGuisarmePlus1FlamingBurst; Weapons.mwkRapier; Weapons.mwkLongbow
-                      Weapons.slamElemental |] |> Array.sort
-let ModificationArr = [|Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus
-                        Shaken;WeaponFocus;EnlargePerson; MutagenStrength;WeaponSpecialization;Fatigued;AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;BlessingOfFervorAttackBonus |] |> Array.sort
-let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] |> Array.sortBy (fun x -> (x 0).Name)
-let CompleteModificationArr = [|
-                                Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
-                                Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
-                                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
-                                BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
-                              |] |> Array.sortBy (fun x -> x.Name)
+open ClientAuxFunctions
+open ClientWebElements
 
-let hiddenModal = Modal.modal [Modal.IsActive false ] []
-/// function for similarity measurements
-let sorensenCoefficent (str1:string) (str2:string) =
-    let charSeq1 = str1.ToCharArray()
-    let charSeq2 = str2.ToCharArray()
-    let startLength1 = str1.Length
-    let startLength2 = str2.Length
-    let mutable str1Mut = str1
-    let mutable str2Mut = str2
-    let numberOfCommonSpecies1 =
-        charSeq1
-        |> Array.map (fun x -> (str2Mut.IndexOf x) 
-                               |> fun x -> if x < 0 
-                                           then str2Mut <- str2Mut 
-                                           else str2Mut <- str2Mut.Remove(x,1)
-                     )
-    let numberOfCommonSpecies2 =
-        charSeq2
-        |> Array.map (fun x -> (str1Mut.IndexOf x) 
-                               |> fun x -> if x < 0 
-                                           then str1Mut <- str1Mut 
-                                           else str1Mut <- str1Mut.Remove(x,1)
-                     )
-    let numberOfSpeciesCommon =
-        (startLength2 - str2Mut.Length,startLength1 - str1Mut.Length)
-        |> fun (x,y) -> if x <> y then failwith "unknown case"
-                        else float x
-    let numberOfSpeciesSpecificToFst =
-        float startLength1 - numberOfSpeciesCommon
-    let numberOfSpeciesSpecificToSnd =
-        float startLength2 - numberOfSpeciesCommon
-    (2. * numberOfSpeciesCommon)/((2. * numberOfSpeciesCommon) + numberOfSpeciesSpecificToFst + numberOfSpeciesSpecificToSnd)
-
-let searchForCharacters (arr: CharacterStats []) (searchForStr:string)=
-    arr
-    |> Array.map (fun x -> sorensenCoefficent x.CharacterName searchForStr,x)
-    |> Array.sortByDescending (fun (score,characterSt) -> score)
-    |> Array.truncate 5
-    |> Array.filter (fun (score,x) -> score > 0.2)
-    |> Array.map snd
-
-let searchForModifications (arr: AttackModification []) (searchForStr:string)=
-    let (garantiedHits,restArr) = arr
-                                  |> Array.mapi (fun i x ->i, x.Name.Contains(searchForStr) )
-                                  |> Array.filter (fun x -> snd x = true)
-                                  |> fun x -> Array.map (fun foundHit -> arr.[fst foundHit]) x, Array.except (Array.map (fun foundHit -> arr.[fst foundHit]) x) arr
-    restArr
-    |> Array.map (fun x -> sorensenCoefficent x.Name searchForStr
-                           ,x)
-    |> Array.sortByDescending (fun (score,characterSt) -> score)
-    |> Array.filter (fun (score,x) -> score > 0.2) 
-    |> Array.map snd
-    |> Array.append garantiedHits
-    |> Array.truncate 5
-
-let searchForWeapons (arr: Weapon []) (searchForStr:string)=
-    arr
-    |> Array.map (fun x -> sorensenCoefficent x.Name searchForStr,x)
-    |> Array.sortByDescending (fun (score,characterSt) -> score)
-    |> Array.truncate 5
-    |> Array.filter (fun (score,x) -> score > 0.2)
-    |> Array.map snd
-
-type SubTabsSearchBars = {
-    SearchCharacter     : string
-    SearchWeapon        : string
-    SearchModification  : string
-    }
-
-let createSubTabsSearchBars searchCha searchWea searchModi= {
-    SearchCharacter    = searchCha
-    SearchWeapon       = searchWea
-    SearchModification = searchModi
-    }
-
-type SubSearchResult = {
-    ResultName          : string
-    ResultDescription   : string
-    }
-
-type SearchResult = {
-    SearchResultChar          : SubSearchResult []
-    SearchResultWeapons       : SubSearchResult []
-    SearchResultModifications : SubSearchResult []
-    }
-
-let createSubSearchResult resultName resultDesc= {
-    ResultName          = resultName
-    ResultDescription   = resultDesc
-    }
-
-let createSearchResult searchResultChar  searchResultWea searchResultModi = {
-    SearchResultChar          = searchResultChar
-    SearchResultWeapons       = searchResultWea
-    SearchResultModifications = searchResultModi
-    }
-
-type ActiveModifiers = {
-    ActiveCharacter     : CharacterStats
-    ActiveSize          : SizeType
-    ActiveWeapons       : Weapon list
-    ActiveModifications : AttackModification list
-    }
-
-let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
-    ActiveCharacter     = activeChar
-    ActiveSize          = activeSize
-    ActiveWeapons       = activeWeapons
-    ActiveModifications = activeModi
-    }
 
 // The model holds data that you want to keep track of while the application is running
 // in this case, we are keeping track of a counter
@@ -172,51 +53,6 @@ type Model = {
     IDCounter : int
     }
 
-// The Msg type defines what events/actions can occur while the application is running
-// the state of the application changes *only* in reaction to these events
-type Msg =
-| AddIDCounterTesting
-| CalculateStandardAttackAction of int
-| AddTabToTabList of (SearchResult -> string [] -> ActiveModifiers -> ReactElement)
-| UpdateSearchBarList of int * int * string
-| UpdateSearchResultList of int * int
-| UpdateActiveModifierList of int * int * string
-| DeleteSearchResultFromActiveArray of int * string
-| UpdateActiveModifierListOnlySize of int * string
-| ResetActiveWeapon of int
-| ResetActiveModifications of int
-| CloseTab of int
-| ActivateModal of ReactElement
-| CloseModal
-| UpdateModalInputList of string * (int*string)
-| AddModalInputToCharacterArray
-
-let createActivateSearchResultButton id intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
-    Button.button [ Button.Props [ Props.Id (sprintf "Button%i%i" id intForWhichTab) ]
-                    Button.OnClick (fun _ -> dispatch (UpdateActiveModifierList (id,intForWhichTab,searchForName)
-                                                      )
-                                   )
-                    Button.Color IsSuccess; Button.IsInverted
-                  ]
-                  [ str (sprintf "add %s" searchForName)]
-
-let deleteSearchResultFromActiveArrayButton intForWhichTab (searchForName:string) (dispatch : Msg -> unit) =
-    Button.button [ Button.Props [ ]
-                    Button.OnClick (fun _ -> dispatch (DeleteSearchResultFromActiveArray (intForWhichTab,searchForName)
-                                                      )
-                                   )
-                    Button.Color IsDanger; Button.IsInverted
-                  ]
-                  [ Icon.icon [ Icon.Size IsSmall ]
-                              [ i [ClassName "fa fa-times-circle"] [] ]
-                  ]
-
-let [<Literal>] ENTER_KEY = 13.
-
-let onEnter msg dispatch =
-    OnKeyDown (fun ev ->
-        if ev.keyCode = ENTER_KEY then
-            dispatch msg)
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
@@ -308,7 +144,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
          let filter =
              match intForWhichTab with
              | 1 -> ((searchForCharacters currentModel.CharacterArray searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName x.CharacterDescription) )
-             | 2 -> ((searchForWeapons exmpWeaponArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
+             | 2 -> ((searchForWeapons currentModel.WeaponArray searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | 3 -> ((searchForModifications ModificationArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | _ -> failwith "unknown case, you should not get this 004"                                                                                                                                
          let (oldValue,heavyCalculation) =
@@ -342,7 +178,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             |> Array.tryFind (fun x -> x.CharacterName = str)
             |> fun x -> if x.IsNone then failwith "Error 005" else x.Value
         let searchWeaponArr (str:string)=
-            exmpWeaponArr
+            currentModel.WeaponArray
             |> Array.tryFind (fun x -> x.Name = str)
             |> fun x -> if x.IsNone then failwith "Error 006" else x.Value
         let searchModificationArr (str:string)=
@@ -389,7 +225,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             newActiveArray,newActiveModifierList,newSearchResult
         let rmWeaponFromArr (str:string)=
             let newActiveArray =
-                exmpWeaponArr
+                currentModel.WeaponArray
                 |> Array.filter (fun x -> x.Name <> str)
             let newActiveModifierList =
                 currentModel.ActiveModifierList
@@ -522,6 +358,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = {
             currentModel with
                 Modal = hiddenModal
+                ModalInputList = []
             }
         nextModel, Cmd.none
     | _, UpdateModalInputList (modalID,(orderID,input)) ->
@@ -553,505 +390,38 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 Modal = hiddenModal
             }
         newModel, Cmd.none
+    | _, AddModalInputToWeaponArray ->
+        let (modalIDOfInterest,modalInputOfInterest) =
+            currentModel.ModalInputList
+            |> List.tryFind (fun (x,y) -> x = "addWeapon")
+            |> fun x -> if x.IsSome then x.Value else failwith "Not all input fields are filled for character creation!"
+        let newWeapon =
+            modalInputOfInterest
+            |> fun x -> if x.Length <> 21 then failwith "Not all input fields are filled for weapon creation!" else x
+            |> Array.sortBy fst
+            |> Array.map snd
+            |> fun x -> createWeapon x.[0]
+                                    (int x.[1]) (int x.[2]) (matchStringToDamageType x.[3])
+                                    (int x.[4])
+                                    (int x.[5]) (int x.[6]) (matchStringToDamageType x.[7])
+                                    (int x.[8]) (int x.[9]) (matchStringToDamageType x.[10])
+                                    (int x.[11])
+                                    (int x.[12]) (int x.[13]) (int x.[14])
+                                    (matchStringToAbilityScore x.[15])
+                                    (matchStringToAbilityScore x.[16])
+                                    (matchStringToHandling x.[17]) (float x.[18])
+                                    (matchStringToNaturalOrManufactured x.[19])
+                                    x.[20]
+        let newModel = {
+            currentModel with
+                WeaponArray = Array.append currentModel.WeaponArray [|newWeapon|]
+                Modal = hiddenModal
+                ModalInputList = []
+            }
+        newModel, Cmd.none
 
-        
     //| _ -> currentModel, Cmd.none
-
-let safeComponents =
-    let components =
-        span [ ]
-           [
-             a [ Href "http://suave.io" ] [ str "Suave" ]
-             str ", "
-             a [ Href "http://fable.io" ] [ str "Fable" ]
-             str ", "
-             a [ Href "https://elmish.github.io/elmish/" ] [ str "Elmish" ]
-             str ", "
-             a [ Href "https://mangelmaxime.github.io/Fulma" ] [ str "Fulma" ]
-             str ", "
-             a [ Href "https://dansup.github.io/bulma-templates/" ] [ str "Bulma\u00A0Templates" ]
-           ]
-
-    p [ ]
-        [ strong [] [ str "SAFE Template" ]
-          str " powered by: "
-          components ]
-
-let navBrand =
-    Navbar.Brand.div [ ]
-        [ Navbar.Item.a
-            [ Navbar.Item.Props [ Href "https://safe-stack.github.io/" ] ]
-            [ img [ Src "https://safe-stack.github.io/images/safe_top.png"
-                    Alt "Logo" ] ]
-          Navbar.burger [ ]
-            [ span [ ] [ ]
-              span [ ] [ ]
-              span [ ] [ ] ] ]
-
-let navMenu =
-    Navbar.menu [ ]
-        [ Navbar.End.div [ ]
-            [ Navbar.Item.a [ Navbar.Item.Props [ Href "https://freymaurer.github.io/PathfinderAttackSimulator/"] ]
-                            [ str "Documentation" ]
-            ]
-        ]
-
-let doHideShow (tabId:string) (cardID:int) =
-    let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
-    if x?style?display = "none"
-    then x?style?display <- "block"
-    else x?style?display <- "none"
-
-let doHide (tabId:string) (cardID:int) =
-    let x = Dom.document.getElementById(sprintf "%A%i" tabId cardID)
-    x?style?display <- "none"
-
-
-///////////////////////////////////////////////////////////////////////// MODALs //////////////////////////////////////////////////////////////
-
-/////////////////// Add Character Modal ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// single input panels used for addModals
-let inputPanel description placeholder inputID (dispatch : Msg -> unit) =
-    Level.level [ ]
-                [ Level.left [ ]
-                             [ Level.item [] [str description] ]
-                  Level.right [ ]
-                              [ Control.div [ ]
-                                            [ Input.text [ Input.Size IsSmall 
-                                                           Input.Placeholder placeholder
-                                                           Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
-                                                                                             )
-                                                                          )
-                                                         ]
-                                              
-                                            ]
-                              ]
-                ]
-// content for add character modal
-let addCharacterModalContent (dispatch : Msg -> unit) =
-    Panel.panel [ ]
-                [ inputPanel "Character Name:" ".. best character name" 1 dispatch
-                  inputPanel "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
-                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
-                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
-                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
-                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
-                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
-                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
-                  inputPanel "Character Description:" ".. description" 9 dispatch]  
-
-// add character modal
-let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
-    Modal.modal [ Modal.IsActive true
-                ]
-        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
-          Modal.Card.card [ ]
-            [ Modal.Card.head [ ]
-                [ Modal.Card.title [ ]
-                    [ str "Character Creator" ]
-                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
-              Modal.Card.body [ ]
-                              [ addCharacterModalContent dispatch]
-              Modal.Card.foot [ ]
-                [ Button.button [ Button.Color IsSuccess
-                                  Button.OnClick (fun _ -> dispatch AddModalInputToCharacterArray
-                                                  )
-                                ]
-                                [ str "Add Character" ]
-                  Button.button [ Button.OnClick closeDisplay ]
-                                [ str "Cancel" ] ] ] ]
-
-let activateAddCharacterDispatch dispatch =
-    ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
-                  
-let dropdownButtonDamageTypes (sizeStr:string) =
-    Dropdown.Item.a [ Dropdown.Item.Props [ (*Props.OnClick (fun _ -> dispatch (UpdateActiveModifierListOnlySize (id,sizeStr)))*) ]
-                         ]
-                    [ str sizeStr]
-/////////////////// Add Weapon Modal ////////////////////////////////////////////////////////////////////////////////////////////////////
-// single input panels used for addModals
-let inputPanelWeaponDmg description placeholder placeholder2 inputID inputID2 (dispatch : Msg -> unit) =
-    Level.level [ ]
-                [ Level.left [ ]
-                             [ Level.item [] [str description] ]
-                  Level.right [ ]
-                              [ Level.level [ ]
-                                            [ Input.text [ Input.Props [ Style [ CSSProp.Width "40px"] ]
-                                                           Input.Size IsSmall 
-                                                           Input.Placeholder placeholder
-                                                           Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID,x))
-                                                                                             )
-                                                                          )
-                                                         ]
-                                              str "d"
-                                              Input.text [ Input.Props [ Style [ CSSProp.Width "40px"] ]
-                                                           Input.Size IsSmall 
-                                                           Input.Placeholder placeholder2
-                                                           Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                    dispatch (UpdateModalInputList ("addCharacter",(inputID2,x))
-                                                                                             )
-                                                                          )
-                                                         ]
-                                              Select.select [ Select.Color IsWhite
-                                                              Select.Size ISize.IsSmall
-                                                              Select.IsInline]
-                                                            [ select [ DefaultValue "Untyped"]
-                                                                [ option [ Props.OnClick (fun _ -> dispatch AddIDCounterTesting)
-                                                                           Value "Untyped" ] [ str "Untyped" ]
-                                                                  option [ Props.Disabled true] [ str "___________________________" ]
-                                                                  option [ Value "2"] [ str "Bludgeoning" ]
-                                                                  option [ Value "3"] [ str "Piercing" ]
-                                                                  option [ Value "3"] [ str "Slashing" ]
-                                                                  option [ Props.Disabled true] [ str "___________________________" ]
-                                                                  option [ Value "3"] [ str "Bludgeoning & Slashing" ]
-                                                                  option [ Value "3"] [ str "Bludgeoning & Piercing" ]
-                                                                  option [ Value "3"] [ str "Piercing & Slashing" ]
-                                                                  option [ Props.Disabled true] [ str "___________________________" ]
-                                                                  option [ Value "3"] [ str "Piercing & Slashing & Bludgeoning" ]
-                                                                  option [ Props.Disabled true] [ str "___________________________" ]
-                                                                  option [ Value "3"] [ str "Acid" ]
-                                                                  option [ Value "3"] [ str "Fire" ]
-                                                                  option [ Value "3"] [ str "Cold" ]
-                                                                  option [ Value "3"] [ str "Electricity" ]
-                                                                  option [ Value "3"] [ str "Precision" ]
-                                                                  option [ Value "3"] [ str "Untyped" ]
-                                                                  option [ Value "3"] [ str "Vital Strike Damage" ]
-                                                                ]                           
-                                                            ]
-                                            ]                           
-
-                              ]
-                ]
-// content for add character modal
-let addWeaponModalContent (dispatch : Msg -> unit) =
-    Panel.panel [ ]
-                [ inputPanel "Weapon Name:" ".. cool weapon name" 1 dispatch
-                  inputPanelWeaponDmg "Weapon Damage:" ".. e.g. 1" ".. e.g. 6" 2 3 dispatch
-                  inputPanel "Strength:" ".. ability score, e.g. 18" 3 dispatch
-                  inputPanel "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
-                  inputPanel "Constitution:" ".. ability score, e.g. 18" 5 dispatch
-                  inputPanel "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
-                  inputPanel "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
-                  inputPanel "Charisma:" ".. ability score, e.g. 18" 8 dispatch
-                  inputPanel "Character Description:" ".. description" 9 dispatch]  
-
-//let glaiveGuisarmePlus1FlamingBurst =  {
-//    Name                = "Glaive-Guisarme +1 flaming"
-//    Damage              = createDamage 1 10 Slashing
-//    DamageBonus         = 1
-//    ExtraDamage         = createDamageHitAndCrit 1 6 Fire 2 10 Fire
-//    BonusAttackRolls    = 1
-//    CriticalRange       = [|20|]
-//    CriticalModifier    = 3
-//    Modifier            = createUsedModifier Strength Strength TwoHanded 1.5
-//    ManufacturedOrNatural = Manufactured
-//    Description         = ""
-//    }
-
-// add Weapon modal
-let addWeaponModal closeDisplay (dispatch : Msg -> unit)=
-    Modal.modal [ Modal.IsActive true
-                ]
-        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
-          Modal.Card.card [ ]
-            [ Modal.Card.head [ ]
-                [ Modal.Card.title [ ]
-                    [ str "Weapon Creator" ]
-                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
-              Modal.Card.body [ ]
-                              [ addWeaponModalContent dispatch]
-              Modal.Card.foot [ ]
-                [ Button.button [ Button.Color IsSuccess
-                                  Button.OnClick (fun _ -> dispatch AddModalInputToCharacterArray
-                                                  )
-                                ]
-                                [ str "Add Weapon" ]
-                  Button.button [ Button.OnClick closeDisplay ]
-                                [ str "Cancel" ] ] ] ]
-
-let test dispatch =
-    ActivateModal (addWeaponModal (fun _ -> dispatch CloseModal) dispatch)
-
-let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specificSearchResults:SubSearchResult []) =
-    let getIntForTabCategory =
-        match tabCategory with
-        | "characters" -> 1
-        | "weapons" -> 2
-        | "modifications" -> 3
-        | _ -> failwith "unknown case, you should not get this 003"
-    let searchResultElement =
-        specificSearchResults
-        |> Array.map (fun subSearch -> subSearch,createActivateSearchResultButton id getIntForTabCategory subSearch.ResultName dispatch)
-        |> Array.map (fun (subSearch,button) -> tr [ ]
-                                                   [ th [ ] [ str (sprintf "%s" subSearch.ResultName) ]
-                                                     th [ ]
-                                                        [ Text.span [ Modifiers [Modifier.TextSize (Screen.All,TextSize.Is7) ] ]
-                                                                    [ str (sprintf "%s" subSearch.ResultDescription) ] 
-                                                        ]
-                                                     th [ ] [ button ]
-                                                     deleteSearchResultFromActiveArrayButton getIntForTabCategory subSearch.ResultName dispatch
-                                                   ]
-                     )
-
-    Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display DisplayOptions.None]
-                                    ]
-                    ]
-                    [ Columns.columns [ ]
-                                      [ Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-                                                      [ Heading.h6 [ ]
-                                                                   [ str "Searchbar"] 
-                                                        Level.item [ ]
-                                                                   [ Field.div [ Field.HasAddons ]
-                                                                               [ Control.div [ ]
-                                                                                             [Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
-                                                                                                              Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
-                                                                                                              Button.OnClick (fun _ -> match tabCategory with
-                                                                                                                                       // Control elment of the modal UI
-                                                                                                                                       | "characters" -> dispatch (activateAddCharacterDispatch dispatch)
-                                                                                                                                       | "weapons" -> dispatch (activateAddCharacterDispatch dispatch)
-                                                                                                                                       | "modifications" -> dispatch (activateAddCharacterDispatch dispatch)
-                                                                                                                                       | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                              )
-                                                                                                            ]
-                                                                                                            [ Icon.icon [ Icon.Size IsSmall ]
-                                                                                                                        [ i [ClassName "fas fa-plus-circle"] [] ] ]
-                                                                                             ]
-                                                                                 Control.div [ ]
-                                                                                             [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
-                                                                                                            Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                                                                     dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
-                                                                                                                           )
-                                                                                                            Input.Props [ onEnter (UpdateSearchResultList (id, getIntForTabCategory)) dispatch ]
-                                                                                                          ] 
-                                                                                             ]
-                                                                                 Control.div [ ]
-                                                                                             [ Button.button [ Button.OnClick (fun _ -> let getIntForTabCategory =
-                                                                                                                                            match tabCategory with
-                                                                                                                                            | "characters" -> 1
-                                                                                                                                            | "weapons" -> 2
-                                                                                                                                            | "modifications" -> 3
-                                                                                                                                            | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                                        dispatch (UpdateSearchResultList (id, getIntForTabCategory))
-                                                                                                                              )
-                                                                                                             ]
-                                                                                                             [ str "Search" ]
-                                                                                             ]
-                                                                               ]
-                                                                   ]
-                                                      ]
-                                        Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-                                                      [ Heading.h6 [ ]
-                                                                   [ str "Results" ]
-                                                        Table.table [ Table.IsBordered
-                                                                      Table.IsFullWidth]
-                                                                    [ thead [ ]
-                                                                            [ tr [ ]
-                                                                                 [ th [ ] [ str "Name" ]
-                                                                                   th [ ] [ str "Description" ]
-                                                                                   th [ ] [ str "add" ] ] ]
-                                                                      tbody [ Props.Id (sprintf "SearchResultTable%s%i" tabCategory id) ]
-                                                                            /// module to display SearchResults
-                                                                            searchResultElement
-                                                                    ]
-                                                      ]
-                                      ]
-                    ]
-
-
-let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchResult) (specificCalculationResults:string []) (relatedActiveModifier:ActiveModifiers) =
-    let specificCalculationResultsFinalized =
-        (if Array.isEmpty specificCalculationResults
-        then [|"Here will be your result! Try it out!"|]
-        else specificCalculationResults)
-        |> Array.collect (fun x -> [|(str x); br []|])
-        |> List.ofArray
-    let stringOfActiveWeaponNames =
-        relatedActiveModifier.ActiveWeapons
-        |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
-        |> fun x -> x.Trim([|',';' '|])
-    let stringOfActiveModifications =
-        relatedActiveModifier.ActiveModifications
-        |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
-        |> fun x -> x.Trim([|',';' '|])
-    let dropdownButtonSize (sizeStr:string) =
-        Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateActiveModifierListOnlySize (id,sizeStr))) ]
-                             ]
-                 [ str sizeStr]
-    Card.card [  ]
-        [ Card.header [ Modifiers [ Modifier.BackgroundColor IsGreyLighter] ]
-            [ Card.Header.title [ Card.Header.Title.IsCentered
-                                  Card.Header.Title.CustomClass "BiggerSize" //does not work either
-                                ]
-                                [ str "Attack Calculator" ]
-              Card.Header.icon [ Modifiers [Modifier.TextAlignment (Screen.All,TextAlignment.Right)] ]
-                               [ Button.button [ Button.Color IsWhite
-                                                 Button.OnClick (fun _ -> doHideShow "TabMainInfo" id
-                                                                          doHideShow "TabMainOutput" id
-                                                                          doHide "Tabweapons" id
-                                                                          doHide "Tabcharacters" id
-                                                                          doHide "Tabmodifications" id
-                                                                )
-                                                 Button.Props [ Tooltip.dataTooltip "hide/show card" ]
-                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                                               ]
-                                               [ Icon.icon [ Icon.Size IsSmall ]
-                                                           [ i [ClassName "fa fa-angle-down"] [] ]
-                                               ]
-                                 Button.button [ Button.Color IsWhite
-                                                 Button.OnClick (fun _ -> dispatch (CloseTab id))
-                                                 Button.Props [ Tooltip.dataTooltip "close" ]
-                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                                               ]
-                                               [ Icon.icon [ Icon.Size IsSmall ]
-                                                           [ i [ClassName "fa fa-times-circle"] [] ]
-                                               ]
-                               ]
-            ]
-          Card.content [ Props [ Props.Id (sprintf "TabMainOutput%A" id); Props.Style [CSSProp.Display DisplayOptions.None] ]
-                          ]
-                       [ Container.container [ Container.IsFluid
-                                               Container.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is6)] ]
-                                             [ h4 [ Props.Id (sprintf "OutputCharacter%A" id)]
-                                                  [ str relatedActiveModifier.ActiveCharacter.CharacterName]
-                                               p [ Props.Id (sprintf "OutputSize%A" id) ]
-                                                 [ str (string relatedActiveModifier.ActiveSize) ]
-                                               p [ Props.Id (sprintf "OutputWeapons%A" id) ]
-                                                 [ Level.level [ ]
-                                                               [ str stringOfActiveWeaponNames
-                                                                 Button.button [ Button.IsOutlined
-                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveWeapon id))
-                                                                                 Button.Props [ Tooltip.dataTooltip "click here to reset all selected weapons" ]
-                                                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                                                                                 Button.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is7) ]
-                                                                               ]
-                                                                               [ str "reset weapons" ]
-                                                               ]
-                                                 ]
-                                               p [ Props.Id (sprintf "OutputModifications%A" id) ]
-                                                 [ Level.level [ ]
-                                                               [ str stringOfActiveModifications
-                                                                 Button.button [ Button.IsOutlined
-                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveModifications id))
-                                                                                 Button.Props [ Tooltip.dataTooltip "click here to reset all selected modifications" ]
-                                                                                 Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
-                                                                                 Button.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is7) ]
-                                                                               ]
-                                                                               [ str "reset weapons" ]
-                                                               ]
-                                                 ] 
-                                             ]
-                       ]
-          Card.content [ Props [ Props.Id (sprintf "TabMainInfo%A" id); Props.Style [CSSProp.Display DisplayOptions.None] ] ]
-                       [ Level.level [ ]
-                                     [ Level.item []
-                                                  [ Button.button [ Button.Color IsInfo
-                                                                    Button.IsInverted
-                                                                    Button.OnClick (fun _ -> dispatch (CalculateStandardAttackAction id)
-                                                                                   )
-                                                                  ]
-                                                                  [ Icon.icon [ Icon.Size IsSmall ]
-                                                                              [ i [ClassName "fas fa-dice-six"] [] ]
-                                                                    span [] [str "Calculate Standard Attack"
-                                                                                ]
-                                                                  ] 
-                                                  ]
-                                     ]
-                         Notification.notification [ Notification.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left)] ]
-                                                   specificCalculationResultsFinalized
-                         
-                         Level.level [ ]
-                                     [ Level.item [ Level.Item.HasTextCentered ]
-                                                  [ div [ ]
-                                                        [ Button.button [ Button.Color IsInfo
-                                                                          Button.IsInverted
-                                                                          Button.OnClick (fun _ -> doHideShow "Tabcharacters" id
-                                                                                                   doHide "Tabweapons" id
-                                                                                                   doHide "Tabmodifications" id
-                                                                                         )
-                                                                        ]
-                                                                        [ span [] [ str "Character" ]
-                                                                          Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
-                                                                        ]
-                                                        ]
-                                                  ]
-                                       Level.item [ Level.Item.HasTextCentered ]
-                                                  [ Dropdown.dropdown [ Dropdown.IsHoverable
-                                                                        Dropdown.IsUp ]
-                                                                      [ div [ ]
-                                                                            [ Button.button [ Button.Color IsInfo
-                                                                                              Button.IsInverted ]
-                                                                                            [ span [] [ str "Size" ]
-                                                                                              Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
-                                                                                            ]
-                                                                            ]
-                                                                        Dropdown.menu [ ]
-                                                                          [ Dropdown.content [ ]
-                                                                              [ dropdownButtonSize "Fine"
-                                                                                dropdownButtonSize "Diminuitive"
-                                                                                dropdownButtonSize "Tiny"
-                                                                                dropdownButtonSize "Small"
-                                                                                Dropdown.divider [ ]
-                                                                                dropdownButtonSize "Medium"
-                                                                                Dropdown.divider [ ]
-                                                                                dropdownButtonSize "Large"      
-                                                                                dropdownButtonSize "Huge"       
-                                                                                dropdownButtonSize "Gargantuan" 
-                                                                                dropdownButtonSize "Colossal"   
-                                                                              ]
-                                                                          ]
-                                                                      ]
-                                                  ]
-                                       Level.item [ Level.Item.HasTextCentered ]
-                                         [ div [ ]
-                                               [ Button.button [ Button.Color IsInfo
-                                                                 Button.IsInverted
-                                                                 Button.OnClick (fun _ -> doHideShow "Tabweapons" id
-                                                                                          doHide "Tabcharacters" id
-                                                                                          doHide "Tabmodifications" id
-                                                                                )
-                                                               ]
-                                                               [ span [] [ str "Weapons" ]
-                                                                 Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
-                                                               ]
-                                               ]
-                                         ]
-                                       Level.item [ Level.Item.HasTextCentered ]
-                                         [ div [ ]
-                                               [ Button.button [ Button.Color IsInfo
-                                                                 Button.IsInverted
-                                                                 Button.OnClick (fun _ -> doHideShow "Tabmodifications" id
-                                                                                          doHide "Tabweapons" id
-                                                                                          doHide "Tabcharacters" id
-                                                                                )
-                                                               ]
-                                                               [ span [] [ str "Modifications" ]
-                                                                 Icon.icon [ ] [ i [ ClassName "fa fa-angle-down" ] [ ] ]
-                                                               ]
-                                               ]
-                                         ]
-                                     ]
-                       ]
-          searchBarTab dispatch id "characters" searchResult.SearchResultChar
-          searchBarTab dispatch id "weapons" searchResult.SearchResultWeapons
-          searchBarTab dispatch id "modifications" searchResult.SearchResultModifications
-          Card.Footer.div [Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered)
-                                       Modifier.TextWeight TextWeight.Bold
-                                       Modifier.BackgroundColor IsGreyLighter]
-                          ] 
-                          [ str relatedActiveModifier.ActiveCharacter.CharacterName ]          
-        ]
-
-let footerContainer =
-    Container.container [ ]
-        [ Content.content [ Content.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
-            [ p [ ]
-                [ safeComponents ]
-              p [ ]
-                [ ] ] ]
-
+              
 
 let view (model : Model) (dispatch : Msg -> unit) =
             
@@ -1074,43 +444,42 @@ let view (model : Model) (dispatch : Msg -> unit) =
                         Heading.p [ Heading.IsSubtitle ]
                             [ safeComponents ] ] ]
               ]
-            Container.container [ Container.IsFluid ]
-                                [ Heading.p [ ]
-                                            [ Level.level [ ]
-                                                          //creaters button, which creates the attack calculator card and adds empty spaces to all models related to this card.
-                                                          [ Button.button [ Button.Color IsWhite
-                                                                            Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
-                                                                                                                               )
-                                                                                                              )
-                                                                          ]
-                                                                          [ str "Open new Attack Calculator tab"]
-                                                            Button.button [ ]
-                                                                          [str "Add custom Character (soon)"]
-                                                            Button.button []
-                                                                          [str "Add custom Weapon (soon)"]
-
-                                                          ]
+            Hero.hero []
+                      [ Container.container [ Container.IsFluid ]
+                                            [ Navbar.navbar [ ] 
+                                                        [ Level.level [ ]
+                                                                      //creaters button, which creates the attack calculator card and adds empty spaces to all models related to this card.
+                                                                      [ Button.button [ Button.Color IsWhite
+                                                                                        Button.OnClick (fun _ -> dispatch (AddTabToTabList (attackCalculatorCard dispatch model.IDCounter)
+                                                                                                                                           )
+                                                                                                                          )
+                                                                                      ]
+                                                                                      [ Icon.icon [ ] [ i [ ClassName "fas fa-dungeon" ] [ ] ]
+                                                                                        span [ ] [ str "Open new Attack Calculator tab" ]
+                                                                                      ]
+                                                                      ]
+                                                        ]
+                                              // contains all above mentioned cards
+                                              Content.content [ ]
+                                                              [ Content.content [ ]
+                                                                                (   (List.sortByDescending fst model.TabList)
+                                                                                    |> List.map (fun (indexTab,tab) -> let relatedSearchResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.SearchResultList)
+                                                                                                                       let relatedCalculationResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.CalculationResult)
+                                                                                                                       let relatedActiveModifier = snd (List.find (fun (index,searchResults) -> index = indexTab) model.ActiveModifierList)
+                                                                                                                       tab relatedSearchResults relatedCalculationResults relatedActiveModifier
+                                                                                                ) 
+                                                                                )   
+                                                              ]              
                                             ]
-                                  // contains all above mentioned cards
-                                  Content.content []
-                                                  [ Content.content [ ]
-                                                                    (   (List.sortByDescending fst model.TabList)
-                                                                        |> List.map (fun (indexTab,tab) -> let relatedSearchResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.SearchResultList)
-                                                                                                           let relatedCalculationResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.CalculationResult)
-                                                                                                           let relatedActiveModifier = snd (List.find (fun (index,searchResults) -> index = indexTab) model.ActiveModifierList)
-                                                                                                           tab relatedSearchResults relatedCalculationResults relatedActiveModifier
-                                                                                    ) 
-                                                                    )   
-                                                  ]              
-                                ]
-            Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
-                            Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
-                            Button.OnClick (fun _ -> dispatch (test dispatch))
-                          ]
-                          [ Icon.icon [ Icon.Size IsSmall ]
-                                      [ i [ClassName "fas fa-plus-circle"] [] ] ]
-            
-            str (string model.IDCounter)
+                      ]
+            //Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
+            //                Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
+            //                Button.OnClick (fun _ -> dispatch (test dispatch))
+            //              ]
+            //              [ Icon.icon [ Icon.Size IsSmall ]
+            //                          [ i [ClassName "fas fa-plus-circle"] [] ] ]
+            //str (string model.IDCounter)
+
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal

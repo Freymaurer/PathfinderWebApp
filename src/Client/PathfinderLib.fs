@@ -38,6 +38,7 @@ module Library =
             | Electricity
             | Untyped
             | BludgeoningOrPiercing
+            | BludgeoningOrSlashing
             | BludgeoningOrPiercingOrSlashing
             | PiercingOrSlashing
             | Precision
@@ -280,6 +281,19 @@ module Library =
             CasterLevel1         = cs1
             CasterLevel2         = cs2
             CharacterDescription = charDesc
+            }
+
+        let createWeapon name dmgNOfDice dmgDie dmgType dmgBonus extradmgNOfDice extradmgDie extradmgType extraCritdmgNOfDice extraCritdmgDie extraCritdmgType attackBonus critStart critEnd critMod toHit toDmg handling dmgMod manuNat desc = {
+            Name                = name
+            Damage              = createDamage dmgNOfDice dmgDie dmgType
+            DamageBonus         = dmgBonus
+            ExtraDamage         = createDamageHitAndCrit extradmgNOfDice extradmgDie extradmgType extraCritdmgNOfDice extraCritdmgDie extraCritdmgType
+            BonusAttackRolls    = attackBonus
+            CriticalRange       = [|critStart .. critEnd|]
+            CriticalModifier    = critMod
+            Modifier            = createUsedModifier toHit toDmg handling dmgMod
+            ManufacturedOrNatural = manuNat
+            Description         = desc
             }
 
     /// library for all prebuild characters; this is mostly for personal use or functions as an example
