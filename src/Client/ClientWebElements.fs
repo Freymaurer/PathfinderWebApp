@@ -69,7 +69,7 @@ let createSearchResult searchResultChar  searchResultWea searchResultModi = {
 type ActiveModifiers = {
     ActiveCharacter     : CharacterStats
     ActiveSize          : SizeType
-    ActiveWeapons       : Weapon list
+    ActiveWeapons       : (int * Weapon) list
     ActiveModifications : AttackModification list
     }
 
@@ -78,6 +78,16 @@ let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
     ActiveSize          = activeSize
     ActiveWeapons       = activeWeapons
     ActiveModifications = activeModi
+    }
+
+type TabActiveIdCounterCollector = {
+    ModificationID : int
+    WeaponID : int
+    }
+
+let createTabActiveIDcounter modID weapID = {
+    ModificationID = modID
+    WeaponID = weapID
     }
 
 // The Msg type defines what events/actions can occur while the application is running
@@ -124,6 +134,7 @@ let onEnter msg dispatch =
     OnKeyDown (fun ev ->
         if ev.keyCode = ENTER_KEY then
             dispatch msg)
+
 
 ///////////////////////////////////////////////////////////////////////// MODALs //////////////////////////////////////////////////////////////
 
@@ -186,11 +197,45 @@ let addCharacterModal closeDisplay (dispatch : Msg -> unit)=
 
 let activateAddCharacterDispatch dispatch =
     ActivateModal (addCharacterModal (fun _ -> dispatch CloseModal) dispatch)
-                  
-let dropdownButtonDamageTypes (sizeStr:string) =
-    Dropdown.Item.a [ Dropdown.Item.Props [ (*Props.OnClick (fun _ -> dispatch (UpdateActiveModifierListOnlySize (id,sizeStr)))*) ]
-                         ]
-                    [ str sizeStr]
+
+/////////////////////////////////////////////////// Show Active Character Modal ///////////////////////////////////////////////////////////////////////////
+let charStats (char:CharacterStats) =
+
+    let charStrings = [|char.CharacterName; string char.BAB; string char.Strength; string char.Dexterity; string char.Constitution;
+                        string char.Intelligence; string char.Wisdom; string char.Charisma|]
+    let descStrings = [|"CharacterName"; "BAB"; "Strength"; "Dexterity"; "Constitution"; "Intelligence"; "Wisdom"; "Charisma"|]
+    let combinedArr = Array.zip descStrings charStrings
+
+    Container.container [ Container.IsFluid ]
+                        (combinedArr
+                        |> Array.map (fun (desc,value) -> Panel.panel [ ]
+                                                                      [ Level.level [ ]
+                                                                                    [ Level.left [] [ str desc ]
+                                                                                      Level.right [] [ str value ]
+                                                                                    ] 
+                                                                      ]
+                                      )
+                        |> List.ofArray
+                        )
+
+
+let displayActivechar char (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                ]
+        [ Modal.background [ Props [ OnClick (fun _ -> dispatch CloseModal) ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Weapon Creator" ]
+                  Delete.delete [ Delete.OnClick (fun _ -> dispatch CloseModal)] [ ] ]
+              Modal.Card.body [ ]
+                              [ charStats char ]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
+                                [ str "Cancel" ] ] ] ]            
+
+let activatedisplayActivechar char dispatch =
+    ActivateModal (displayActivechar char dispatch)
 
 /////////////////// Add Weapon Modal ////////////////////////////////////////////////////////////////////////////////////////////////////
 // single input panels used for addModals
@@ -411,6 +456,55 @@ let addWeaponModal closeDisplay (dispatch : Msg -> unit)=
 
 let activateAddWeaponDispatch dispatch =
     ActivateModal (addWeaponModal (fun _ -> dispatch CloseModal) dispatch)
+
+///////////////////////////////////////////////////////// Show active Weapon modal ///////////////////////////////////////////////////////////
+
+let weaponStats (w:Weapon) =
+
+    let weapStrings = [|w.Name; (sprintf "%id%i %A" w.Damage.NumberOfDie w.Damage.Die w.Damage.DamageType); (string w.DamageBonus);
+                        (sprintf "%id%i %A" w.ExtraDamage.OnHit.NumberOfDie w.ExtraDamage.OnHit.Die w.ExtraDamage.OnHit.DamageType);
+                        (sprintf "%id%i %A" w.ExtraDamage.OnCrit.NumberOfDie w.ExtraDamage.OnCrit.Die w.ExtraDamage.OnCrit.DamageType);
+                        (string w.BonusAttackRolls); (sprintf "%i-%i/x%i" (Array.min w.CriticalRange) (Array.max w.CriticalRange) w.CriticalModifier)
+                        (string w.Modifier.ToHit); (string w.Modifier.ToDmg); (sprintf "%A, with %A damage multiplier" w.Modifier.MultiplicatorOnDamage.Hand w.Modifier.MultiplicatorOnDamage.Multiplicator)
+                        (string w.ManufacturedOrNatural); w.Description |]
+
+    let descStrings = [|"Weapon Name"; "Weapon Damage"; "Bonus Damage"; "Extra Damage"; "Extra Damage on Crit"; "Attack Bonus";
+                        "Crit Statistics"; "Modifier to hit"; "Modifier to Damage"; "Handling and Dmg - Multiplier"; "Manufactured or Natural"; "Description"|]
+
+    let combinedArr = Array.zip descStrings weapStrings
+
+    Container.container [ Container.IsFluid ]
+                        (combinedArr
+                        |> Array.map (fun (desc,value) -> Panel.panel [ ]
+                                                                      [ Columns.columns [ ]
+                                                                                        [ Column.column [ Column.Modifiers [ Modifier.IsPulledLeft ] ] [ str desc ]
+                                                                                          Column.column [ Column.Modifiers [ Modifier.IsPulledRight ] ] [ str value ]
+                                                                                        ] 
+                                                                      ]
+                                      )
+                        |> List.ofArray
+                        )
+
+
+let displayActiveWeapon char (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                  Modal.Props [ (onEnter CloseModal dispatch) ]
+                ]
+        [ Modal.background [ Props [ OnClick (fun _ -> dispatch CloseModal) ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Weapon Creator" ]
+                  Delete.delete [ Delete.OnClick (fun _ -> dispatch CloseModal)] [ ] ]
+              Modal.Card.body [ ]
+                              [ weaponStats char ]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
+                                [ str "Cancel" ] ] ] ]            
+
+let activatedisplayActiveWeapon weapon dispatch =
+    ActivateModal (displayActiveWeapon weapon dispatch)
+
 ///////////////////////////////////////////////////////// Attack Calculator Card ////////////////////////////////////////////////////////
 
 
@@ -506,10 +600,17 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
         else specificCalculationResults)
         |> Array.collect (fun x -> [|(str x); br []|])
         |> List.ofArray
-    let stringOfActiveWeaponNames =
-        relatedActiveModifier.ActiveWeapons
-        |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
-        |> fun x -> x.Trim([|',';' '|])
+
+    let activeWeaponElement =
+        let singleElement activeID weapon=
+            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveWeapon weapon dispatch)) ]
+                      Tag.Color Color.IsWhiteTer]
+                    [str weapon.Name ]
+            
+        div []
+            (relatedActiveModifier.ActiveWeapons
+            |> List.map (fun (x,y) -> singleElement x y))
+
     let stringOfActiveModifications =
         relatedActiveModifier.ActiveModifications
         |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
@@ -553,13 +654,16 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                          ]
                        [ Container.container [ Container.IsFluid
                                                Container.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is6)] ]
-                                             [ h4 [ Props.Id (sprintf "OutputCharacter%A" id)]
+                                             [ h4 [ Props.Id (sprintf "OutputCharacter%A" id)
+                                                    Props.OnClick (fun _ -> let char = relatedActiveModifier.ActiveCharacter
+                                                                            dispatch (activatedisplayActivechar char dispatch))
+                                                  ]
                                                   [ str relatedActiveModifier.ActiveCharacter.CharacterName]
                                                p [ Props.Id (sprintf "OutputSize%A" id) ]
                                                  [ str (string relatedActiveModifier.ActiveSize) ]
                                                p [ Props.Id (sprintf "OutputWeapons%A" id) ]
                                                  [ Level.level [ ]
-                                                               [ str stringOfActiveWeaponNames
+                                                               [ activeWeaponElement
                                                                  Button.button [ Button.IsOutlined
                                                                                  Button.OnClick (fun _ -> dispatch (ResetActiveWeapon id))
                                                                                  Button.Props [ Tooltip.dataTooltip "click here to reset all selected weapons" ]

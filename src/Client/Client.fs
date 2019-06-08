@@ -41,10 +41,11 @@ open ClientWebElements
 // the initial value will be requested from server
 type Model = { 
     TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> ReactElement)) list
-    SearchBarList: (int*SubTabsSearchBars) list
-    SearchResultList : (int*SearchResult) list
-    ActiveModifierList : (int*ActiveModifiers) list
-    CalculationResult : (int*string []) list
+    TabSearchBarList: (int*SubTabsSearchBars) list
+    TabSearchResultList : (int*SearchResult) list
+    TabActiveModifierList : (int*ActiveModifiers) list
+    TabCalculationResult : (int*string []) list
+    TabActiveIDCounter : (int*TabActiveIdCounterCollector) list
     Modal : ReactElement
     ModalInputList : (string * (int * string) []) list
     CharacterArray : CharacterStats []
@@ -60,13 +61,15 @@ let init () : Model * Cmd<Msg> =
         //ReactElements with AttackCalculator function, all with id
         TabList = []
         //SearchBar input from TabList, all with id
-        SearchBarList = []
+        TabSearchBarList = []
         //Results after searching library for input in SearchBar, all with id
-        SearchResultList = []
+        TabSearchResultList = []
         //Selected modifiers which will be used for attack calculator, all with id
-        ActiveModifierList = []
+        TabActiveModifierList = []
         //Calculation results, all with id
-        CalculationResult = []
+        TabCalculationResult = []
+        // Collection of id counters for weapons and modifications. This is necessary to give every active weapon/modification an id to show its stats or remove it from the active array
+        TabActiveIDCounter = []
         // Saves all active states and ids for modals 
         Modal = hiddenModal
         // List for all modal input arrays (for character, weapon, modification creation)
@@ -95,26 +98,28 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel with
                 TabList = (currentModel.IDCounter,tab)::currentModel.TabList
                 IDCounter = currentModel.IDCounter+1
-                SearchBarList = (currentModel.IDCounter,createSubTabsSearchBars "" "" "")::currentModel.SearchBarList
-                SearchResultList = (currentModel.IDCounter,createSearchResult [||] [||] [||])::currentModel.SearchResultList
-                ActiveModifierList = (currentModel.IDCounter, createActiveModifiers EmptyChar Medium [EmptyWeapon] [EmptyModification])::currentModel.ActiveModifierList
+                TabSearchBarList = (currentModel.IDCounter,createSubTabsSearchBars "" "" "")::currentModel.TabSearchBarList
+                TabSearchResultList = (currentModel.IDCounter,createSearchResult [||] [||] [||])::currentModel.TabSearchResultList
+                TabActiveModifierList = (currentModel.IDCounter, createActiveModifiers EmptyChar Medium [-1,EmptyWeapon] [EmptyModification])::currentModel.TabActiveModifierList
                 //ActiveModifierList = (currentModel.IDCounter, createActiveModifiers Characters.myParrn Medium [Weapons.greatswordParrn] [Flanking])::currentModel.ActiveModifierList
-                CalculationResult = (currentModel.IDCounter, [||])::currentModel.CalculationResult
+                TabCalculationResult = (currentModel.IDCounter, [||])::currentModel.TabCalculationResult
+                TabActiveIDCounter = (currentModel.IDCounter, createTabActiveIDcounter 0 0)::currentModel.TabActiveIDCounter
             }
         nextModel,Cmd.none
     | _, CloseTab (id) ->
         let nextModel = {
             currentModel with
                 TabList = List.filter (fun (index,x) -> index <> id) currentModel.TabList
-                SearchBarList = List.except [currentModel.SearchBarList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.SearchBarList).Value] currentModel.SearchBarList
-                SearchResultList = List.except [currentModel.SearchResultList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.SearchResultList).Value] currentModel.SearchResultList
-                ActiveModifierList = List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value] currentModel.ActiveModifierList
+                TabSearchBarList = List.except [currentModel.TabSearchBarList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabSearchBarList).Value] currentModel.TabSearchBarList
+                TabSearchResultList = List.except [currentModel.TabSearchResultList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabSearchResultList).Value] currentModel.TabSearchResultList
+                TabActiveModifierList = List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value] currentModel.TabActiveModifierList
+                TabActiveIDCounter = List.except [currentModel.TabActiveIDCounter.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveIDCounter).Value] currentModel.TabActiveIDCounter
             }
         nextModel,Cmd.none     
     | _, UpdateSearchBarList (id,intForWhichTab,input) ->
          let nextModel = {
             currentModel with
-                SearchBarList = ( (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.SearchBarList)
+                TabSearchBarList = ( (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.TabSearchBarList)
                                   |> fun x -> let updatedSearch =
                                                   x.Value
                                                   |> fun (index,searchBar) -> match intForWhichTab with
@@ -124,14 +129,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                               | _ -> failwith "unknown case, you should not get this 001"
                                               if x.IsNone
                                               then failwith "unknown case, you should not get this 002"
-                                              else updatedSearch::(List.except [x.Value] currentModel.SearchBarList)
+                                              else updatedSearch::(List.except [x.Value] currentModel.TabSearchBarList)
                                 )
             }   
          nextModel,Cmd.none
     | _, UpdateSearchResultList (id,intForWhichTab) ->
 
          let searchInput =
-            ((List.tryFind (fun (index,searchBarType) -> index = id) currentModel.SearchBarList)
+            ((List.tryFind (fun (index,searchBarType) -> index = id) currentModel.TabSearchBarList)
             |> fun x -> if x.IsNone
                         then "Error"
                         else match intForWhichTab with
@@ -148,7 +153,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
              | 3 -> ((searchForModifications ModificationArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
              | _ -> failwith "unknown case, you should not get this 004"                                                                                                                                
          let (oldValue,heavyCalculation) =
-            (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.SearchResultList)
+            (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.TabSearchResultList)
             |> fun x -> let updatedResult =
                             x.Value
                             |> fun (index,searchResult) -> match intForWhichTab with
@@ -159,19 +164,31 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                         if x.IsNone
                         then failwith "unknown case, you should not get this 002"
                         else x.Value,updatedResult
-         let newSearchResultList = heavyCalculation::(List.except [oldValue] currentModel.SearchResultList)
+         let newSearchResultList = heavyCalculation::(List.except [oldValue] currentModel.TabSearchResultList)
          let nextModel = {
             currentModel with
-                SearchResultList = newSearchResultList
+                TabSearchResultList = newSearchResultList
          }
          nextModel,Cmd.none
     | _, UpdateActiveModifierList (id,intForWhichTab,searchForString) ->
-        let filterFillerWeapon (weapList:Weapon list) =
-            List.filter (fun (x:Weapon) -> x.Name <> "Here will be your weapons" ) weapList
+        let currentActiveIDCollector =
+            List.find (fun (index,value) -> index = id) currentModel.TabActiveIDCounter
+            |> snd
+            |> fun x -> x
+        let updatedActiveIDCollector =
+            match intForWhichTab with
+            | 1 -> currentActiveIDCollector
+            | 2 -> { currentActiveIDCollector with
+                        WeaponID = currentActiveIDCollector.WeaponID + 1 }
+            | 3 -> { currentActiveIDCollector with
+                        ModificationID = currentActiveIDCollector.ModificationID + 1 }
+            | _ -> failwith "Error 011"
+        let filterFillerWeapon (weapList:(int * Weapon) list) =
+            List.filter (fun (y,x:Weapon) -> x.Name <> "Here will be your weapons" ) weapList
         let filterFillerModi (modiList:AttackModification list) =
             List.filter (fun (x:AttackModification) -> x.Name <> "Here will be your modifications" ) modiList
         let activeModifierMatchedID =
-            List.tryFind ( fun (index,values) -> index = id) currentModel.ActiveModifierList
+            List.tryFind ( fun (index,values) -> index = id) currentModel.TabActiveModifierList
             |> fun x -> snd x.Value
         let searchCharArr (str:string)=
             currentModel.CharacterArray
@@ -190,14 +207,16 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             | 1 -> (searchCharArr searchForString)
                    |> fun x -> createActiveModifiers x activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
             | 2 -> (searchWeaponArr searchForString)
-                   |> fun weap -> createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize (weap::(filterFillerWeapon activeModifierMatchedID.ActiveWeapons)) activeModifierMatchedID.ActiveModifications
+                   |> fun weap -> createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize ((currentActiveIDCollector.WeaponID,weap)::(filterFillerWeapon activeModifierMatchedID.ActiveWeapons)) activeModifierMatchedID.ActiveModifications
             | 3 -> (searchModificationArr searchForString)
                    |> fun attackModi -> createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons (attackModi::(filterFillerModi activeModifierMatchedID.ActiveModifications))
             | _ -> failwith "Error 008"
         let nextModel = {
             currentModel with
-                ActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
-                                                                         ] currentModel.ActiveModifierList)
+                TabActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                            ] currentModel.TabActiveModifierList)
+                TabActiveIDCounter = (id,updatedActiveIDCollector)::(List.except [currentModel.TabActiveIDCounter.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveIDCounter).Value
+                                                                                 ] currentModel.TabActiveIDCounter)
             }
         nextModel,Cmd.none
     | _, DeleteSearchResultFromActiveArray (intForWhichTab,searchForString) ->
@@ -206,7 +225,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 currentModel.CharacterArray
                 |> Array.filter (fun x -> x.CharacterName <> str)
             let newActiveModifierList =
-                currentModel.ActiveModifierList
+                currentModel.TabActiveModifierList
                 |> List.map (fun (x,activeMod) -> let replacedChar = {
                                                     activeMod with
                                                         ActiveCharacter = EmptyChar }
@@ -215,7 +234,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                   else x,activeMod 
                             )
             let newSearchResult =
-                currentModel.SearchResultList
+                currentModel.TabSearchResultList
                 |> List.map (fun (id,result) -> let newSearchResult = {
                                                         result with
                                                             SearchResultChar = Array.filter (fun x -> x.ResultName <> str) result.SearchResultChar
@@ -228,14 +247,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 currentModel.WeaponArray
                 |> Array.filter (fun x -> x.Name <> str)
             let newActiveModifierList =
-                currentModel.ActiveModifierList
+                currentModel.TabActiveModifierList
                 |> List.map (fun (x,activeMod) -> let rmWeap = {
                                                     activeMod with
-                                                        ActiveWeapons = List.filter (fun x -> x.Name <> str) activeMod.ActiveWeapons }
+                                                        ActiveWeapons = List.filter (fun (y,x) -> x.Name <> str) activeMod.ActiveWeapons }
                                                   x,rmWeap
                             )
             let newSearchResult =
-                currentModel.SearchResultList
+                currentModel.TabSearchResultList
                 |> List.map (fun (id,result) -> let newSearchResult = {
                                                     result with
                                                         SearchResultWeapons = Array.filter (fun x -> x.ResultName <> str) result.SearchResultWeapons }
@@ -247,14 +266,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 CompleteModificationArr
                 |> Array.filter (fun x -> x.Name <> str)
             let newActiveModifierList =
-                currentModel.ActiveModifierList
+                currentModel.TabActiveModifierList
                 |> List.map (fun (x,activeMod) -> let rmModification = {
                                                     activeMod with
                                                         ActiveModifications = List.filter (fun x -> x.Name <> str) activeMod.ActiveModifications }
                                                   x,rmModification
                             )
             let newSearchResult =
-                currentModel.SearchResultList
+                currentModel.TabSearchResultList
                 |> List.map (fun (id,result) -> let newSearchResult = {
                                                     result with
                                                         SearchResultModifications = Array.filter (fun x -> x.ResultName <> str) result.SearchResultModifications }
@@ -267,22 +286,22 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             | 1 -> rmCharFromArr searchForString
                    |> fun (charArr,activeModList,searchResultList) -> {currentModel with
                                                                         CharacterArray = charArr
-                                                                        ActiveModifierList = activeModList
-                                                                        SearchResultList = searchResultList}
+                                                                        TabActiveModifierList = activeModList
+                                                                        TabSearchResultList = searchResultList}
             | 2 -> rmWeaponFromArr searchForString
                    |> fun (weapArr,activeModList,searchResultList) -> {currentModel with
                                                                                WeaponArray = weapArr
-                                                                               ActiveModifierList = activeModList
-                                                                               SearchResultList = searchResultList}
+                                                                               TabActiveModifierList = activeModList
+                                                                               TabSearchResultList = searchResultList}
             | 3 -> rmModificationFromArr searchForString
                    |> fun (modArr,activeModList,searchResultList) -> {currentModel with
                                                                         ModificationArray = modArr
-                                                                        ActiveModifierList = activeModList
-                                                                        SearchResultList = searchResultList}
+                                                                        TabActiveModifierList = activeModList
+                                                                        TabSearchResultList = searchResultList}
             | _ -> failwith "Error 010"
         nextModel,Cmd.none
     | _, UpdateActiveModifierListOnlySize (id,sizeString) ->
-        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
                                       |> fun x -> snd x.Value
         let updatedSize = match sizeString with
                           | "Fine"         -> Fine
@@ -299,18 +318,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             createActiveModifiers activeModifierMatchedID.ActiveCharacter updatedSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
         let nextModel = { 
             currentModel with
-                ActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
-                                                                         ] currentModel.ActiveModifierList)
+                TabActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                            ] currentModel.TabActiveModifierList)
             }
         nextModel, Cmd.none
     | _, CalculateStandardAttackAction (id) ->
-        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
                                       |> fun x -> snd x.Value
-        let CalculationResultsMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.CalculationResult
+        let CalculationResultsMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabCalculationResult
                                           |> fun x -> snd x.Value
         let result = myStandardAttack activeModifierMatchedID.ActiveCharacter
                                       activeModifierMatchedID.ActiveSize
-                                      activeModifierMatchedID.ActiveWeapons.Head
+                                      (snd activeModifierMatchedID.ActiveWeapons.Head)
                                       (Array.ofList activeModifierMatchedID.ActiveModifications)
                      |> fun x -> "> " + x
         let outputFinalized = CalculationResultsMatchedID
@@ -318,24 +337,24 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                               |> fun x -> if x.Length > 5 then x.[..4] else x
         let nextModel = {
             currentModel with
-                CalculationResult = (id,outputFinalized)::currentModel.CalculationResult
+                TabCalculationResult = (id,outputFinalized)::currentModel.TabCalculationResult
             }
         nextModel, Cmd.none
     | _, ResetActiveWeapon (id) ->
-        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
                                       |> fun x -> snd x.Value
         let resetActiveModifers = {
             activeModifierMatchedID with
-                ActiveWeapons = [EmptyWeapon]
+                ActiveWeapons = [-1,EmptyWeapon]
             }
         let nextModel = {
             currentModel with
-                ActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
-                                                                            ] currentModel.ActiveModifierList)
+                TabActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                               ] currentModel.TabActiveModifierList)
             }
         nextModel, Cmd.none
     | _, ResetActiveModifications (id) ->
-        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.ActiveModifierList
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
                                       |> fun x -> snd x.Value
         let resetActiveModifers = {
             activeModifierMatchedID with
@@ -343,8 +362,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             }
         let nextModel = {
             currentModel with
-                ActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.ActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.ActiveModifierList).Value
-                                                                            ] currentModel.ActiveModifierList)
+                TabActiveModifierList = (id,resetActiveModifers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                               ] currentModel.TabActiveModifierList)
             }
         nextModel, Cmd.none
     | _, ActivateModal (modal) ->
@@ -421,7 +440,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         newModel, Cmd.none
 
     //| _ -> currentModel, Cmd.none
-              
+
 
 let view (model : Model) (dispatch : Msg -> unit) =
             
@@ -463,23 +482,24 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                               Content.content [ ]
                                                               [ Content.content [ ]
                                                                                 (   (List.sortByDescending fst model.TabList)
-                                                                                    |> List.map (fun (indexTab,tab) -> let relatedSearchResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.SearchResultList)
-                                                                                                                       let relatedCalculationResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.CalculationResult)
-                                                                                                                       let relatedActiveModifier = snd (List.find (fun (index,searchResults) -> index = indexTab) model.ActiveModifierList)
+                                                                                    |> List.map (fun (indexTab,tab) -> let relatedSearchResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabSearchResultList)
+                                                                                                                       let relatedCalculationResults = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabCalculationResult)
+                                                                                                                       let relatedActiveModifier = snd (List.find (fun (index,searchResults) -> index = indexTab) model.TabActiveModifierList)
                                                                                                                        tab relatedSearchResults relatedCalculationResults relatedActiveModifier
                                                                                                 ) 
                                                                                 )   
                                                               ]              
                                             ]
                       ]
+            
             //Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
             //                Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
-            //                Button.OnClick (fun _ -> dispatch (test dispatch))
+            //                Button.OnClick (fun _ -> let weap = model.TabActiveModifierList |> Array.ofSeq |> fun x -> x.[0] |> snd |> fun x -> x.ActiveWeapons |> List.head
+            //                                         dispatch (activatedisplayActiveWeapon (snd weap) dispatch))
             //              ]
             //              [ Icon.icon [ Icon.Size IsSmall ]
             //                          [ i [ClassName "fas fa-plus-circle"] [] ] ]
             //str (string model.IDCounter)
-
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal
