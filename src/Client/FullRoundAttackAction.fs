@@ -1,4 +1,4 @@
-﻿namespace PathfinderAttackSimulator
+namespace PathfinderAttackSimulator
 
 open Library
 open Library.AuxLibFunctions
@@ -678,14 +678,15 @@ module FullRoundAttackAction =
                 |> fun x -> if x <= 0 then 1 else x
     
             if (Array.contains attackRoll weapon.CriticalRange) = false && extraDamageCombined = [||]
-                then printfn "You attack with a %s and hit the enemy with a %i (rolled %i) for %i %A damage!" weapon.Name totalAttackBonus attackRoll getDamage weapon.Damage.DamageType
+                then sprintf "You attack with a %s and hit the enemy with a %i (rolled %i) for %i %A damage!" weapon.Name totalAttackBonus attackRoll getDamage weapon.Damage.DamageType
             elif (Array.contains attackRoll weapon.CriticalRange) = true && extraDamageCombined = [||] 
-                then printfn "You attack with a %s and (hopefully) critically hit the enemy with a %i (rolled %i) and confirm your crit with a %i (rolled %i) for %i %A damage (x %i)!" weapon.Name totalAttackBonus attackRoll totalAttackCritBonus critConfirmationRoll getDamage weapon.Damage.DamageType weapon.CriticalModifier
+                then sprintf "You attack with a %s and (hopefully) critically hit the enemy with a %i (rolled %i) and confirm your crit with a %i (rolled %i) for %i %A damage (x %i)!" weapon.Name totalAttackBonus attackRoll totalAttackCritBonus critConfirmationRoll getDamage weapon.Damage.DamageType weapon.CriticalModifier
             elif (Array.contains attackRoll weapon.CriticalRange) = false && extraDamageCombined <> [||]
-                then printfn "You attack with a %s and hit the enemy with a %i (rolled %i) for %i %A damage %s !" weapon.Name totalAttackBonus attackRoll getDamage weapon.Damage.DamageType (extraDamageToString extraDamageCombined)
+                then sprintf "You attack with a %s and hit the enemy with a %i (rolled %i) for %i %A damage %s !" weapon.Name totalAttackBonus attackRoll getDamage weapon.Damage.DamageType (extraDamageToString extraDamageCombined)
             elif (Array.contains attackRoll weapon.CriticalRange) = true && extraDamageCombined <> [||] 
-                then printfn "You attack with a %s and (hopefully) critically hit the enemy with a %i (rolled %i) and confirm your crit with a %i (rolled %i) for %i %A damage (x %i)(%s on a crit) / (%s when not confirmed) !" weapon.Name totalAttackBonus attackRoll totalAttackCritBonus critConfirmationRoll getDamage weapon.Damage.DamageType weapon.CriticalModifier (extraDamageToString extraDamageCombined) (extraDamageToString getExtraDamageOnHit) 
-                else printfn "You should not see this message, please open an issue with your input as a bug report"
+                then sprintf "You attack with a %s and (hopefully) critically hit the enemy with a %i (rolled %i) and confirm your crit with a %i (rolled %i) for %i %A damage (x %i)(%s on a crit) / (%s when not confirmed) !" weapon.Name totalAttackBonus attackRoll totalAttackCritBonus critConfirmationRoll getDamage weapon.Damage.DamageType weapon.CriticalModifier (extraDamageToString extraDamageCombined) (extraDamageToString getExtraDamageOnHit) 
+                else sprintf "You should not see this message, please open an issue with your input as a bug report"
      
         addAllWeaponTypeSpecificModifications
-        |> Array.map (fun (w,wType,modi,modArr) -> getOneAttack w wType modi modArr)
+        |> Array.map (fun (w,wType,modi,modArr) -> (getOneAttack w wType modi modArr))
+        //|> String.concat " "

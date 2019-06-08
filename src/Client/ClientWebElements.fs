@@ -69,15 +69,17 @@ let createSearchResult searchResultChar  searchResultWea searchResultModi = {
 type ActiveModifiers = {
     ActiveCharacter     : CharacterStats
     ActiveSize          : SizeType
-    ActiveWeapons       : (int * Weapon) list
+    ActiveWeapons       : (int * WeaponType * Weapon) list
     ActiveModifications : AttackModification list
+    ActiveTabWeaponType : WeaponType
     }
 
-let createActiveModifiers activeChar activeSize activeWeapons activeModi= {
+let createActiveModifiers activeChar activeSize activeWeapons activeModi wType = {
     ActiveCharacter     = activeChar
     ActiveSize          = activeSize
     ActiveWeapons       = activeWeapons
     ActiveModifications = activeModi
+    ActiveTabWeaponType = wType
     }
 
 type TabActiveIdCounterCollector = {
@@ -95,12 +97,14 @@ let createTabActiveIDcounter modID weapID = {
 type Msg =
 | AddIDCounterTesting
 | CalculateStandardAttackAction of int
-| AddTabToTabList of (SearchResult -> string [] -> ActiveModifiers -> ReactElement)
+| CalculateFullRoundAttackAction of int
+| AddTabToTabList of (SearchResult -> ReactElement [] -> ActiveModifiers -> ReactElement)
 | UpdateSearchBarList of int * int * string
 | UpdateSearchResultList of int * int
 | UpdateActiveModifierList of int * int * string
-| DeleteSearchResultFromActiveArray of int * string
 | UpdateActiveModifierListOnlySize of int * string
+| UpdateActiveModifierListOnlyWeaponType of int * WeaponType
+| DeleteSearchResultFromActiveArray of int * string
 | ResetActiveWeapon of int
 | ResetActiveModifications of int
 | CloseTab of int
@@ -529,6 +533,31 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                    ]
                      )
 
+    let checkRadioWeaponType =
+        Columns.columns [ ]
+                [ Column.column [ ]
+                                [ div [ ClassName "block" ]
+                                      [ Field.div [ ]
+                                            [ Checkradio.radioInline [ Checkradio.Name "inline"
+                                                                       Checkradio.Id "checkradio-1"
+                                                                       Checkradio.Size IsSmall
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,PrimaryMain))) ]
+                                                [ str "Main" ]
+                                              Checkradio.radioInline [ Checkradio.Name "inline"
+                                                                       Checkradio.Id "checkradio-2"
+                                                                       Checkradio.Size IsSmall
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,Primary))) ]
+                                                [ str "Primary" ]
+                                              Checkradio.radioInline [ Checkradio.Name "inline"
+                                                                       Checkradio.Id "checkradio-3"
+                                                                       Checkradio.Size IsSmall
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,Secondary))) ]
+                                                [ str "Secondary" ]
+                                            ]
+                                      ]
+                                ]
+                ]
+
     Content.content [ Content.Props [ Props.Id (sprintf "Tab%s%i" tabCategory id); Props.Style [CSSProp.Display DisplayOptions.None]
                                     ]
                     ]
@@ -574,6 +603,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                              ]
                                                                                ]
                                                                    ]
+                                                        Heading.p [] [ (if tabCategory = "weapons" then checkRadioWeaponType else str "" ) ]
                                                       ]
                                         Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
                                                       [ Heading.h6 [ ]
@@ -593,23 +623,23 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                       ]
                     ]
 
-let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchResult) (specificCalculationResults:string []) (relatedActiveModifier:ActiveModifiers) =
+let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchResult) (specificCalculationResults:ReactElement []) (relatedActiveModifier:ActiveModifiers) =
     let specificCalculationResultsFinalized =
         (if Array.isEmpty specificCalculationResults
-        then [|"Here will be your result! Try it out!"|]
+        then [|str "Here will be your result! Try it out!"|]
         else specificCalculationResults)
-        |> Array.collect (fun x -> [|(str x); br []|])
+        |> Array.collect (fun x -> [| x; br []|])
         |> List.ofArray
 
     let activeWeaponElement =
-        let singleElement activeID weapon=
+        let singleElement activeID wType weapon =
             Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveWeapon weapon dispatch)) ]
                       Tag.Color Color.IsWhiteTer]
-                    [str weapon.Name ]
+                    [str (weapon.Name + ", " + string wType) ]
             
         div []
             (relatedActiveModifier.ActiveWeapons
-            |> List.map (fun (x,y) -> singleElement x y))
+            |> List.map (fun (x,wType,y) -> singleElement x wType y))
 
     let stringOfActiveModifications =
         relatedActiveModifier.ActiveModifications
@@ -698,6 +728,16 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                                   [ Icon.icon [ Icon.Size IsSmall ]
                                                                               [ i [ClassName "fas fa-dice-d20"] [] ]
                                                                     span [] [str "Calculate Standard Attack"
+                                                                                ]
+                                                                  ]
+                                                    Button.button [ Button.Color IsInfo
+                                                                    Button.IsInverted
+                                                                    Button.OnClick (fun _ -> dispatch (CalculateFullRoundAttackAction id)
+                                                                                   )
+                                                                  ]
+                                                                  [ Icon.icon [ Icon.Size IsSmall ]
+                                                                              [ i [ClassName "fas fa-dice-d20"] [] ]
+                                                                    span [] [str "Calculate Full Round Attack Action"
                                                                                 ]
                                                                   ] 
                                                   ]

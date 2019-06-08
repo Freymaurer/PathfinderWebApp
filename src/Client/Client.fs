@@ -40,11 +40,11 @@ open ClientWebElements
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
 type Model = { 
-    TabList: (int * (SearchResult -> string [] -> ActiveModifiers -> ReactElement)) list
+    TabList: (int * (SearchResult -> ReactElement [] -> ActiveModifiers -> ReactElement)) list
     TabSearchBarList: (int*SubTabsSearchBars) list
     TabSearchResultList : (int*SearchResult) list
     TabActiveModifierList : (int*ActiveModifiers) list
-    TabCalculationResult : (int*string []) list
+    TabCalculationResult : (int*ReactElement []) list
     TabActiveIDCounter : (int*TabActiveIdCounterCollector) list
     Modal : ReactElement
     ModalInputList : (string * (int * string) []) list
@@ -100,7 +100,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 IDCounter = currentModel.IDCounter+1
                 TabSearchBarList = (currentModel.IDCounter,createSubTabsSearchBars "" "" "")::currentModel.TabSearchBarList
                 TabSearchResultList = (currentModel.IDCounter,createSearchResult [||] [||] [||])::currentModel.TabSearchResultList
-                TabActiveModifierList = (currentModel.IDCounter, createActiveModifiers EmptyChar Medium [-1,EmptyWeapon] [EmptyModification])::currentModel.TabActiveModifierList
+                TabActiveModifierList = (currentModel.IDCounter, createActiveModifiers EmptyChar Medium [-1,PrimaryMain,EmptyWeapon] [EmptyModification] PrimaryMain)::currentModel.TabActiveModifierList
                 //ActiveModifierList = (currentModel.IDCounter, createActiveModifiers Characters.myParrn Medium [Weapons.greatswordParrn] [Flanking])::currentModel.ActiveModifierList
                 TabCalculationResult = (currentModel.IDCounter, [||])::currentModel.TabCalculationResult
                 TabActiveIDCounter = (currentModel.IDCounter, createTabActiveIDcounter 0 0)::currentModel.TabActiveIDCounter
@@ -183,8 +183,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             | 3 -> { currentActiveIDCollector with
                         ModificationID = currentActiveIDCollector.ModificationID + 1 }
             | _ -> failwith "Error 011"
-        let filterFillerWeapon (weapList:(int * Weapon) list) =
-            List.filter (fun (y,x:Weapon) -> x.Name <> "Here will be your weapons" ) weapList
+        let filterFillerWeapon (weapList:(int * WeaponType * Weapon) list) =
+            List.filter (fun (y,z,x:Weapon) -> x.Name <> "Here will be your weapons" ) weapList
         let filterFillerModi (modiList:AttackModification list) =
             List.filter (fun (x:AttackModification) -> x.Name <> "Here will be your modifications" ) modiList
         let activeModifierMatchedID =
@@ -205,11 +205,17 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let updatedModifiers =
             match intForWhichTab with
             | 1 -> (searchCharArr searchForString)
-                   |> fun x -> createActiveModifiers x activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
+                   |> fun char -> { activeModifierMatchedID with
+                                        ActiveCharacter = char}
+                   //createActiveModifiers char activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
             | 2 -> (searchWeaponArr searchForString)
-                   |> fun weap -> createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize ((currentActiveIDCollector.WeaponID,weap)::(filterFillerWeapon activeModifierMatchedID.ActiveWeapons)) activeModifierMatchedID.ActiveModifications
+                   |> fun weap -> { activeModifierMatchedID with
+                                        ActiveWeapons = ((currentActiveIDCollector.WeaponID,activeModifierMatchedID.ActiveTabWeaponType,weap)::(filterFillerWeapon activeModifierMatchedID.ActiveWeapons)) }
+                   // createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize ((currentActiveIDCollector.WeaponID,PrimaryMain,weap)::(filterFillerWeapon activeModifierMatchedID.ActiveWeapons)) activeModifierMatchedID.ActiveModifications
             | 3 -> (searchModificationArr searchForString)
-                   |> fun attackModi -> createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons (attackModi::(filterFillerModi activeModifierMatchedID.ActiveModifications))
+                   |> fun attackModi -> { activeModifierMatchedID with
+                                            ActiveModifications = (attackModi::(filterFillerModi activeModifierMatchedID.ActiveModifications)) }
+                   // createActiveModifiers activeModifierMatchedID.ActiveCharacter activeModifierMatchedID.ActiveSize activeModifierMatchedID.ActiveWeapons (attackModi::(filterFillerModi activeModifierMatchedID.ActiveModifications))
             | _ -> failwith "Error 008"
         let nextModel = {
             currentModel with
@@ -219,6 +225,42 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                                  ] currentModel.TabActiveIDCounter)
             }
         nextModel,Cmd.none
+    | _, UpdateActiveModifierListOnlySize (id,sizeString) ->
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
+                                      |> fun x -> snd x.Value
+        let updatedSize = match sizeString with
+                          | "Fine"         -> Fine
+                          | "Diminuitive"  -> Diminuitive
+                          | "Tiny"         -> Tiny
+                          | "Small"        -> Small
+                          | "Medium"       -> Medium
+                          | "Large"        -> Large
+                          | "Huge"         -> Huge
+                          | "Gargantuan"   -> Gargantuan
+                          | "Colossal"     -> Colossal
+                          | _              -> failwith "Error 009"
+        let updatedModifiers =
+            { activeModifierMatchedID with
+                    ActiveSize = updatedSize }
+            //createActiveModifiers activeModifierMatchedID.ActiveCharacter updatedSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
+        let nextModel = { 
+            currentModel with
+                TabActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                            ] currentModel.TabActiveModifierList)
+            }
+        nextModel, Cmd.none
+    | _, UpdateActiveModifierListOnlyWeaponType (id,wType) ->
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
+                                      |> fun x -> snd x.Value
+        let updatedModifiers =
+            { activeModifierMatchedID with
+                    ActiveTabWeaponType = wType }
+        let nextModel = { 
+            currentModel with
+                TabActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
+                                                                            ] currentModel.TabActiveModifierList)
+            }   
+        nextModel, Cmd.none    
     | _, DeleteSearchResultFromActiveArray (intForWhichTab,searchForString) ->
         let rmCharFromArr (str:string)=
             let newActiveArray =
@@ -250,7 +292,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 currentModel.TabActiveModifierList
                 |> List.map (fun (x,activeMod) -> let rmWeap = {
                                                     activeMod with
-                                                        ActiveWeapons = List.filter (fun (y,x) -> x.Name <> str) activeMod.ActiveWeapons }
+                                                        ActiveWeapons = List.filter (fun (y,z,x) -> x.Name <> str) activeMod.ActiveWeapons }
                                                   x,rmWeap
                             )
             let newSearchResult =
@@ -300,38 +342,54 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                                                         TabSearchResultList = searchResultList}
             | _ -> failwith "Error 010"
         nextModel,Cmd.none
-    | _, UpdateActiveModifierListOnlySize (id,sizeString) ->
-        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
-                                      |> fun x -> snd x.Value
-        let updatedSize = match sizeString with
-                          | "Fine"         -> Fine
-                          | "Diminuitive"  -> Diminuitive
-                          | "Tiny"         -> Tiny
-                          | "Small"        -> Small
-                          | "Medium"       -> Medium
-                          | "Large"        -> Large
-                          | "Huge"         -> Huge
-                          | "Gargantuan"   -> Gargantuan
-                          | "Colossal"     -> Colossal
-                          | _              -> failwith "Error 009"
-        let updatedModifiers =
-            createActiveModifiers activeModifierMatchedID.ActiveCharacter updatedSize activeModifierMatchedID.ActiveWeapons activeModifierMatchedID.ActiveModifications
-        let nextModel = { 
-            currentModel with
-                TabActiveModifierList = (id,updatedModifiers)::(List.except [currentModel.TabActiveModifierList.Item (List.tryFindIndex (fun (i,y) -> i = id) currentModel.TabActiveModifierList).Value
-                                                                            ] currentModel.TabActiveModifierList)
-            }
-        nextModel, Cmd.none
     | _, CalculateStandardAttackAction (id) ->
         let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
                                       |> fun x -> snd x.Value
         let CalculationResultsMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabCalculationResult
                                           |> fun x -> snd x.Value
+        let chooseWeapon =
+            let revList =
+                activeModifierMatchedID.ActiveWeapons
+                |> List.rev
+            revList
+            |> List.tryFind (fun (x,wType,weapon) -> wType = PrimaryMain)
+            |> fun x -> if x.IsSome
+                        then x.Value
+                        else revList
+                             |> List.tryFind (fun (x,wType,weapon) -> wType = Primary)
+                             |> fun y -> if y.IsSome
+                                         then y.Value
+                                         else revList.Head
         let result = myStandardAttack activeModifierMatchedID.ActiveCharacter
                                       activeModifierMatchedID.ActiveSize
-                                      (snd activeModifierMatchedID.ActiveWeapons.Head)
+                                      (chooseWeapon |> (fun (x,y,z) -> z))
                                       (Array.ofList activeModifierMatchedID.ActiveModifications)
-                     |> fun x -> "> " + x
+                     |> fun x -> [|str ("> " + x); br []|]
+                     |> fun x -> div [] x
+        let outputFinalized = CalculationResultsMatchedID
+                              |> Array.append [|result|]
+                              |> fun x -> if x.Length > 5 then x.[..4] else x
+        let nextModel = {
+            currentModel with
+                TabCalculationResult = (id,outputFinalized)::currentModel.TabCalculationResult
+            }
+        nextModel, Cmd.none
+    | _, CalculateFullRoundAttackAction (id) ->
+        let activeModifierMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabActiveModifierList
+                                      |> fun x -> snd x.Value
+        let CalculationResultsMatchedID = List.tryFind (fun (index,activeModi) -> index = id) currentModel.TabCalculationResult
+                                          |> fun x -> snd x.Value
+        let weapons =
+            activeModifierMatchedID.ActiveWeapons
+            |> List.map (fun (activeID,wType,weapon) -> weapon,wType)
+        let result = myFullAttack activeModifierMatchedID.ActiveCharacter
+                                      activeModifierMatchedID.ActiveSize
+                                      (Array.ofList weapons)
+                                      (Array.ofList activeModifierMatchedID.ActiveModifications)
+                     |> Array.collect (fun x -> [|str ("> " + x); br []|]
+                                   )
+                     |> List.ofArray
+                     |> fun x ->  div [] x
         let outputFinalized = CalculationResultsMatchedID
                               |> Array.append [|result|]
                               |> fun x -> if x.Length > 5 then x.[..4] else x
@@ -345,7 +403,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                                       |> fun x -> snd x.Value
         let resetActiveModifers = {
             activeModifierMatchedID with
-                ActiveWeapons = [-1,EmptyWeapon]
+                ActiveWeapons = [-1,PrimaryMain,EmptyWeapon]
             }
         let nextModel = {
             currentModel with
@@ -491,7 +549,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                               ]              
                                             ]
                       ]
-            
+
             //Button.button [ Button.Props [ Tooltip.dataTooltip "click here to add new entry" ]
             //                Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipBottom)
             //                Button.OnClick (fun _ -> let weap = model.TabActiveModifierList |> Array.ofSeq |> fun x -> x.[0] |> snd |> fun x -> x.ActiveWeapons |> List.head
@@ -500,6 +558,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             //              [ Icon.icon [ Icon.Size IsSmall ]
             //                          [ i [ClassName "fas fa-plus-circle"] [] ] ]
             //str (string model.IDCounter)
+            //str (string (snd model.TabCalculationResult.Head).Length )
             footer [ ClassName "footer" ]
                    [ footerContainer ]
             model.Modal

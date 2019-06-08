@@ -26,6 +26,7 @@
         "whatwg-fetch": "^3.0.0"
     },
     "dependencies": {
+        "bulma-checkradio": "2.1.0",
         "bulma-tooltip": "2.0.2"
     }
 }
