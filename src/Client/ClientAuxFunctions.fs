@@ -35,12 +35,12 @@ let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.gre
                       Weapons.slamElemental |] |> Array.sort
 let ModificationArr = [|Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus
                         Shaken;WeaponFocus;EnlargePerson; MutagenStrength;WeaponSpecialization;Fatigued;AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;BlessingOfFervorAttackBonus |] |> Array.sort
-let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] |> Array.sortBy (fun x -> (x 0).Name)
+let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] 
 let CompleteModificationArr = [|
-                                Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
-                                Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
-                                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
-                                BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
+                                Multiattack;SneakAttackOnce [|"0"|];TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
+                                Invisibility;PlanarFocusFire [|"0"|];SneakAttack [|"0"|];Wrath;DivineFavor;FuriousFocus [|"0"|];PowerAttack [|"0"|];Flanking;Charging;WeaponSpecialization;Fatigued;
+                                AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage [|"0"|]; ShockingGrasp [|"0";"true"|]; ShockingGraspIntensifiedEmpowered [|"0";"true"|]; PowerAttackURL [|"OneHanded";"0"|];
+                                BlessingOfFervorAttackBonus; BonusAttackDamage [|"0";"0"|];
                               |] |> Array.sortBy (fun x -> x.Name)
 
 let hiddenModal = Modal.modal [Modal.IsActive false ] []

@@ -395,9 +395,9 @@ module StandardAttackAction =
                                                    |> Array.sum                   
                           )
             |> Array.sum
-            |> fun bonus -> if (Array.contains (PowerAttack char.BAB) modifications) = true 
+            |> fun bonus -> if (Array.contains (PowerAttack [|string char.BAB|]) modifications) = true 
                                 && weapon.Modifier.MultiplicatorOnDamage.Hand = TwoHanded
-                            then float bonus + ((float (PowerAttack char.BAB).BonusDamage.Value) * 0.5) 
+                            then float bonus + ((float (PowerAttack [|string char.BAB|]).BonusDamage.Value) * 0.5) 
                                  |> int
                             else bonus
         ///

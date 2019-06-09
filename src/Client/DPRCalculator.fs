@@ -1,4 +1,4 @@
-﻿namespace PathfinderAttackSimulator
+namespace PathfinderAttackSimulator
 
 open System
 open PathfinderAttackSimulator.Library
@@ -499,9 +499,9 @@ module DamagePerRound =
                                                    |> Array.sum                   
                           )
             |> Array.sum
-            |> fun bonus -> if (Array.contains (PowerAttack char.BAB) modifications) = true 
+            |> fun bonus -> if (Array.contains (PowerAttack [|string char.BAB|]) modifications) = true 
                                 && weapon.Modifier.MultiplicatorOnDamage.Hand = TwoHanded
-                            then float bonus + ((float (PowerAttack char.BAB).BonusDamage.Value) * 0.5) 
+                            then float bonus + ((float (PowerAttack [|string char.BAB|]).BonusDamage.Value) * 0.5) 
                                  |> int
                             else bonus
         ///
@@ -1231,14 +1231,14 @@ module DamagePerRound =
                                                        |> Array.sum                   
                               )
                 |> Array.sum
-                |> fun bonus -> if (Array.contains (PowerAttack char.BAB) modifications) = true && 
+                |> fun bonus -> if (Array.contains (PowerAttack [|string char.BAB|]) modifications) = true && 
                                         weapon.Modifier.MultiplicatorOnDamage.Hand = TwoHanded &&
                                         wType = PrimaryMain
-                                then float bonus + ((float (PowerAttack char.BAB).BonusDamage.Value) * 0.5) |> int
-                                elif (Array.contains (PowerAttack char.BAB) modifications) = true 
+                                then float bonus + ((float (PowerAttack [|string char.BAB|]).BonusDamage.Value) * 0.5) |> int
+                                elif (Array.contains (PowerAttack [|string char.BAB|]) modifications) = true 
                                      && Array.contains PrimaryMain (Array.map (fun x -> snd x) weapons)
                                      && (wType = Primary || wType = Secondary)
-                                then float bonus - ((float (PowerAttack char.BAB).BonusDamage.Value) * 0.5) |> int
+                                then float bonus - ((float (PowerAttack [|string char.BAB|]).BonusDamage.Value) * 0.5) |> int
                                 else bonus
             ///
             let getDamage = 

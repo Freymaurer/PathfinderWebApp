@@ -99,11 +99,12 @@ type Msg =
 | CalculateStandardAttackAction of int
 | CalculateFullRoundAttackAction of int
 | AddTabToTabList of (SearchResult -> ReactElement [] -> ActiveModifiers -> ReactElement)
-| UpdateSearchBarList of int * int * string
-| UpdateSearchResultList of int * int
-| UpdateActiveModifierList of int * int * string
-| UpdateActiveModifierListOnlySize of int * string
-| UpdateActiveModifierListOnlyWeaponType of int * WeaponType
+| UpdateTabSearchBarList of int * int * string
+| UpdateTabSearchResultList of int * int
+| SelectModifierForTabActiveModifierList of int * int * string * (Msg -> unit)
+| UpdateTabActiveModifierList of int * ActiveModifiers
+| UpdateTabActiveModifierSize of int * string
+| UpdateTabActiveModifierWeaponType of int * WeaponType
 | DeleteSearchResultFromActiveArray of int * string
 | ResetActiveWeapon of int
 | ResetActiveModifications of int
@@ -113,6 +114,7 @@ type Msg =
 | UpdateModalInputList of string * (int*string)
 | AddModalInputToCharacterArray
 | AddModalInputToWeaponArray
+| UseModalInputForModificationVariables of (int * ActiveModifiers * AttackModification list * (string [] -> AttackModification) * (Msg -> unit))
 
 let createActivateSearchResultButton (searchForName:string) msg dispatch =
     Button.button [ Button.Props [ ]
@@ -509,6 +511,43 @@ let displayActiveWeapon char (dispatch : Msg -> unit)=
 let activatedisplayActiveWeapon weapon dispatch =
     ActivateModal (displayActiveWeapon weapon dispatch)
 
+////////////////////////////////////////////////////////// Modal for Modifications that need further input parameters ////////////////////////
+
+// content for add character modal
+let modifictionsInputModalContent (modiWithVar:(string [] -> AttackModification)) (dispatch : Msg -> unit) =
+    let inputPanels =
+        (modiWithVar [||]).WebInputParameter
+        |> Array.mapi (fun i x -> inputPanel "modificationVariables" x.InfoText x.Placeholdertext i dispatch)
+        |> List.ofArray
+    Panel.panel [ ]
+                inputPanels
+
+
+// add character modal
+let modifictionsInputModal closeDisplay id activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                  Modal.Props [ (onEnter AddModalInputToCharacterArray dispatch) ]
+                ]
+        [ Modal.background [ Props [ OnClick closeDisplay ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str "Add Modification Info" ]
+                  Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
+              Modal.Card.body [ ]
+                              [ modifictionsInputModalContent modiWithVar dispatch]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.Color IsSuccess
+                                  Button.OnClick (fun _ -> dispatch (UseModalInputForModificationVariables (id,activeModifiers,filteredActiveList,modiWithVar,dispatch))
+                                                  )
+                                ]
+                                [ str "Add Character" ]
+                  Button.button [ Button.OnClick closeDisplay ]
+                                [ str "Cancel" ] ] ] ]
+
+let activatemodifictionsInputModal id activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) dispatch =
+    ActivateModal (modifictionsInputModal (fun _ -> dispatch CloseModal) id activeModifiers filteredActiveList modiWithVar dispatch)
+
 ///////////////////////////////////////////////////////// Attack Calculator Card ////////////////////////////////////////////////////////
 
 
@@ -521,7 +560,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
         | _ -> failwith "unknown case, you should not get this 003"
     let searchResultElement = 
         specificSearchResults
-        |> Array.map (fun subSearch -> subSearch,createActivateSearchResultButton subSearch.ResultName (UpdateActiveModifierList (id,getIntForTabCategory,subSearch.ResultName)) dispatch)
+        |> Array.map (fun subSearch -> subSearch,createActivateSearchResultButton subSearch.ResultName (SelectModifierForTabActiveModifierList (id,getIntForTabCategory,subSearch.ResultName,dispatch)) dispatch)
         |> Array.map (fun (subSearch,button) -> tr [ ]
                                                    [ th [ ] [ str (sprintf "%s" subSearch.ResultName) ]
                                                      th [ ]
@@ -541,17 +580,17 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                             [ Checkradio.radioInline [ Checkradio.Name "inline"
                                                                        Checkradio.Id "checkradio-1"
                                                                        Checkradio.Size IsSmall
-                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,PrimaryMain))) ]
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateTabActiveModifierWeaponType (id,PrimaryMain))) ]
                                                 [ str "Main" ]
                                               Checkradio.radioInline [ Checkradio.Name "inline"
                                                                        Checkradio.Id "checkradio-2"
                                                                        Checkradio.Size IsSmall
-                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,Primary))) ]
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateTabActiveModifierWeaponType (id,Primary))) ]
                                                 [ str "Primary" ]
                                               Checkradio.radioInline [ Checkradio.Name "inline"
                                                                        Checkradio.Id "checkradio-3"
                                                                        Checkradio.Size IsSmall
-                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateActiveModifierListOnlyWeaponType (id,Secondary))) ]
+                                                                       Checkradio.OnChange (fun _ -> dispatch (UpdateTabActiveModifierWeaponType (id,Secondary))) ]
                                                 [ str "Secondary" ]
                                             ]
                                       ]
@@ -584,9 +623,9 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                  Control.div [ ]
                                                                                              [ Input.text [ Input.Placeholder (sprintf "Search %s" tabCategory)
                                                                                                             Input.OnChange (fun e -> let x = !!e.target?value
-                                                                                                                                     dispatch (UpdateSearchBarList (id,getIntForTabCategory,x))
+                                                                                                                                     dispatch (UpdateTabSearchBarList (id,getIntForTabCategory,x))
                                                                                                                            )
-                                                                                                            Input.Props [ onEnter (UpdateSearchResultList (id, getIntForTabCategory)) dispatch ]
+                                                                                                            Input.Props [ onEnter (UpdateTabSearchResultList (id, getIntForTabCategory)) dispatch ]
                                                                                                           ] 
                                                                                              ]
                                                                                  Control.div [ ]
@@ -596,7 +635,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                                                                                                                                             | "weapons" -> 2
                                                                                                                                             | "modifications" -> 3
                                                                                                                                             | _ -> failwith "unknown case, you should not get this 003"
-                                                                                                                                        dispatch (UpdateSearchResultList (id, getIntForTabCategory))
+                                                                                                                                        dispatch (UpdateTabSearchResultList (id, getIntForTabCategory))
                                                                                                                               )
                                                                                                              ]
                                                                                                              [ str "Search" ]
@@ -646,7 +685,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
         |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
         |> fun x -> x.Trim([|',';' '|])
     let dropdownButtonSize (sizeStr:string) =
-        Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateActiveModifierListOnlySize (id,sizeStr))) ]
+        Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateTabActiveModifierSize (id,sizeStr))) ]
                              ]
                  [ str sizeStr]
     Card.card [ ]

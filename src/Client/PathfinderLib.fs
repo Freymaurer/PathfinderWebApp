@@ -79,6 +79,7 @@ module Library =
             | OneHanded
             | TwoHanded
             | OffHand
+            | NoValidHandling
 
         type SizeAttributes = {
             SizeModifier : int
@@ -228,6 +229,8 @@ module Library =
                         9,createSizeAttributes -8 9 Colossal
                         ] |> Map.ofSeq
 
+        let checkEmpty (inputArr:string []) (baseInputArr:string []) =
+            if Array.isEmpty inputArr then baseInputArr else inputArr
 
         type CharacterStats = {
             CharacterName : string
@@ -521,7 +524,7 @@ module Library =
 
     /// Library for all pre-written modifications
     module Modifications =
-
+        
         open AuxLibFunctions
 
         let AidAnother = {
@@ -551,17 +554,22 @@ module Library =
             }
         
         /// use this modification to add fast and easy flat boni to attack rolls or to damage.
-        let BonusAttackDamage attack damage= {
+        let BonusAttackDamage (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0";"0"|]
+            let (input1,input2) =
+                arr
+                |> fun x -> (int x.[0]),(int x.[1])
+            {
             Name = "Variable Bonus For Attack And Damage"
             BonusAttacks = createBonusAttacks 0 NoBA All
-            BonusAttackRoll = createAttackBoniHitAndCrit attack Flat 0 Flat
-            BonusDamage = createBonus damage Flat
+            BonusAttackRoll = createAttackBoniHitAndCrit input1 Flat 0 Flat
+            BonusDamage = createBonus input2 Flat
             ExtraDamage = createDamageHitAndCrit 0 0 Untyped 0 0 Untyped
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Use this modification to add fast and easy flat boni to attack rolls or to damage"
-            WebInputParameter = [|createInputParameter "Bonus to attack rolls" "eg. 2"; createInputParameter "Bonus to damage rolls" "eg. 2"|]
+            WebInputParameter = [|createInputParameter "Bonus to attack rolls" ".. 2"; createInputParameter "Bonus to damage rolls" ".. 2"|]
             }
 
         let Charging = {
@@ -655,7 +663,11 @@ module Library =
             WebInputParameter = [||]
             }
 
-        let FuriousFocus bab = {
+        let FuriousFocus (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let bab =
+                arr.[0]
+            {
             Name = "Furious Focus"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (int(floor (float bab/4. + 1.))) BonusTypes.Flat 0 Flat
@@ -665,7 +677,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
-            WebInputParameter = [|createInputParameter "" ""|]
+            WebInputParameter = [|createInputParameter "Base Attack Bonus:" ".. 3"|]
             }
 
         let Haste = {
@@ -681,7 +693,9 @@ module Library =
             WebInputParameter = [||]
             }
 
-        let InspireCourage bardLevel = 
+        let InspireCourage (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let bardLevel = (int arr.[0])
             let (bonusValue:int) = match bardLevel with
                                    | x when bardLevel >= 17 -> 4
                                    | x when bardLevel >= 11 -> 3
@@ -697,7 +711,7 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "For a set level, because of several IC increasing items"
-            WebInputParameter = [|createInputParameter "" ""|]
+            WebInputParameter = [|createInputParameter "Bard Level:" ".. 2"|]
             }
 
         let Invisibility = {
@@ -739,7 +753,9 @@ module Library =
             WebInputParameter = [||]
             }
 
-        let PlanarFocusFire (lvl:int) = 
+        let PlanarFocusFire (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let lvl = int arr.[0]
             let NumberOfExtraDie = int (lvl/4) + 1 
             {
             Name = "Planar Focus (Fire)"
@@ -751,10 +767,13 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = ""
-            WebInputParameter = [|createInputParameter "" ""|]
+            WebInputParameter = [|createInputParameter "Animal Focus Class lvl:" ".. 2"|]
             }
 
-        let PowerAttack bab = {
+        let PowerAttack (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let bab = int arr.[0]
+            {
             Name = "Power Attack"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (int( - (floor (float bab/4. + 1.)) )) Flat 0 Flat
@@ -764,10 +783,19 @@ module Library =
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
             Description = "Takes BAB as input."
-            WebInputParameter = [|createInputParameter "" ""|]
+            WebInputParameter = [|createInputParameter "Base Attack Bonus" ".. 2"|]
             }
         
-        let PowerAttackURL (handed:WeaponHanded) bab= {
+        let PowerAttackURL (inputArr: string [])=
+            let arr = checkEmpty inputArr [|"OneHanded";"0"|]
+            let ((handed:WeaponHanded),bab) =
+                match arr.[0] with
+                | "OneHanded" -> OneHanded
+                | "OffHand" -> OffHand
+                | "TwoHanded" -> TwoHanded
+                | _ ->  NoValidHandling
+                , (int arr.[1])
+            {
             Name = "Power Attack (For Bestiary Calculator)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (int( - (floor (float bab/4. + 1.)) )) Flat 0 Flat
@@ -780,8 +808,8 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = "Takes OneHanded/TwoHanded/OffHanded and BAB as input. Use this only for the calculateURLAttack function."
-            WebInputParameter = [|createInputParameter "" ""|]
+            Description = "Takes OneHanded/TwoHanded/OffHand and BAB as input. Use this only for the calculateURLAttack function."
+            WebInputParameter = [|createInputParameter "Weapon Handling:" "OneHanded/TwoHanded/OffHand"; createInputParameter "Base Attack Bonus:" ".. 2"|]
             }        
     
         let Shaken = {
@@ -797,7 +825,15 @@ module Library =
             WebInputParameter = [||]
             }
 
-        let ShockingGrasp casterLevel metalTF = {
+        let ShockingGrasp (inputArr:string [])=
+            let arr = checkEmpty inputArr [|"0";"false"|]
+            let (casterLevel,metalTF) =
+                (int arr.[0]),
+                match arr.[1] with
+                | "true" | "True" -> true
+                | "false" | "False" -> false
+                | _ -> failwith "This is not a regocnized true/false input"
+            {
             Name = "Shocking Grasp"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (if metalTF = true then 3 else 0) Flat 0 Flat
@@ -806,11 +842,19 @@ module Library =
             AppliedTo = [|All|], 1
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = "Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 5d6."
-            WebInputParameter = [|createInputParameter "" ""|]
+            Description = "Takes casterLevel and true/false for attack metal. Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 5d6."
+            WebInputParameter = [|createInputParameter "Caster Level:" ".. 2";createInputParameter "Attacking Metal?" "true=yes/false=no"|]
             }
 
-        let ShockingGraspIntensifiedEmpowered casterLevel metalTF = {
+        let ShockingGraspIntensifiedEmpowered (inputArr:string [])=
+            let arr = checkEmpty inputArr [|"0";"false"|]
+            let (casterLevel,metalTF) =
+                (int arr.[0]),
+                match arr.[1] with
+                | "true" | "True" -> true
+                | "false" | "False" -> false
+                | _ -> failwith "This is not a regocnized true/false input"
+            {
             Name = "Shocking Grasp Intensified Empowered"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit (if metalTF = true then 3 else 0) Flat 0 Flat
@@ -822,11 +866,15 @@ module Library =
             AppliedTo = [|All|], 1
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = "Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 10d6 for this intensified version. Empowered increases the number of all rolled dice by 50%"
-            WebInputParameter = [|createInputParameter "" ""|]
+            Description = "Takes casterLevel and true/false for attack metal. Shocking Grasp deals 1d6 / level electricity damage up to a maximum of 10d6 for this intensified version. Empowered increases the number of all rolled dice by 50%"
+            WebInputParameter = [|createInputParameter "Caster Level:" ".. 2";createInputParameter "Attacking Metal?" "true=yes/false=no"|]
             }
 
-        let SneakAttack (rogueLevel:int) = {
+        let SneakAttack (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let rogueLevel =
+                arr.[0]
+            {
             Name = "Sneak Attack"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
@@ -835,11 +883,15 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
-            WebInputParameter = [|createInputParameter "" ""|]
+            Description = "This assumes full Sneak Attack damage dice progression"
+            WebInputParameter = [|createInputParameter "Rogue Level" ".. 2"|]
             }
 
-        let SneakAttackOnce rogueLevel = {
+        let SneakAttackOnce (inputArr:string []) =
+            let arr = checkEmpty inputArr [|"0"|]
+            let rogueLevel =
+                arr.[0]
+            {
             Name = "Sneak Attack (Once)"
             BonusAttacks = createBonusAttacks 0 NoBA All
             BonusAttackRoll = createAttackBoniHitAndCrit 0 Flat 0 Flat
@@ -848,8 +900,8 @@ module Library =
             AppliedTo = [|All|], 1        
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = "Sneak Attack on first attack. This can happen due to a stealth attack or an full-round attack action from invisibility"
-            WebInputParameter = [|createInputParameter "" ""|]
+            Description = "Sneak Attack on first attack. This can happen due to a stealth attack or an full-round attack action from invisibility. This assumes full Sneak Attack damage dice progression."
+            WebInputParameter = [|createInputParameter "Rogue Level" ".. 2"|]
             }
 
         ///mit allen als Primary gelisteten Waffen; bisher nur mit -2 auf Treffen
@@ -989,10 +1041,10 @@ module Library =
             let rdyStr = createStringForLib str
             match rdyStr with
             | rdyStr when rdyStr = "MODIFICATIONS" -> [|
-                                                        Multiattack;SneakAttackOnce 0;TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
-                                                        Invisibility;PlanarFocusFire 0;SneakAttack 0;Wrath;DivineFavor;FuriousFocus 0;PowerAttack 0;Flanking;Charging;WeaponSpecialization;Fatigued;
-                                                        AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage 0; ShockingGrasp 0 true; ShockingGraspIntensifiedEmpowered 0 true; PowerAttackURL OffHand 0;
-                                                        BlessingOfFervorAttackBonus; BonusAttackDamage 0 0;
+                                                        Multiattack;SneakAttackOnce [|"0"|];TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
+                                                        Invisibility;PlanarFocusFire [|"0"|];SneakAttack [|"0"|];Wrath;DivineFavor;FuriousFocus [|"0"|];PowerAttack [|"0"|];Flanking;Charging;WeaponSpecialization;Fatigued;
+                                                        AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;InspireCourage [|"0"|]; ShockingGrasp [|"0";"true"|]; ShockingGraspIntensifiedEmpowered [|"0";"true"|]; PowerAttackURL [|"OneHanded";"0"|];
+                                                        BlessingOfFervorAttackBonus; BonusAttackDamage [|"0";"0"|];
                                                       |]
                                                       |> Array.map (fun x -> x.Name)
                                                       |> Array.sortBy (fun x -> x)
