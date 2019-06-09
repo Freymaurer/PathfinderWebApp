@@ -35,7 +35,7 @@ let exmpWeaponArr = [|Weapons.bite;Weapons.butchersAxe;Weapons.claw; Weapons.gre
                       Weapons.slamElemental |] |> Array.sort
 let ModificationArr = [|Charging; DivineFavor; Wrath; Multiattack; Flanking; Haste; FlurryOfBlows; TwoWeaponFighting; TwoWeaponFightingImproved; MutagenStrength; Invisibility; BlessingOfFervorAttackBonus
                         Shaken;WeaponFocus;EnlargePerson; MutagenStrength;WeaponSpecialization;Fatigued;AidAnother;VitalStrike;VitalStrikeImproved;VitalStrikeGreater;BlessingOfFervorAttackBonus |] |> Array.sort
-let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire|] 
+let VarModificationArr = [|PowerAttack;SneakAttack;SneakAttackOnce;PlanarFocusFire;BonusAttackDamage;FuriousFocus;InspireCourage;ShockingGrasp;ShockingGraspIntensifiedEmpowered;PowerAttackURL|] 
 let CompleteModificationArr = [|
                                 Multiattack;SneakAttackOnce [|"0"|];TwoWeaponFighting;TwoWeaponFightingImproved;Haste;FlurryOfBlows;Shaken;WeaponFocus;EnlargePerson;MutagenStrength;
                                 Invisibility;PlanarFocusFire [|"0"|];SneakAttack [|"0"|];Wrath;DivineFavor;FuriousFocus [|"0"|];PowerAttack [|"0"|];Flanking;Charging;WeaponSpecialization;Fatigued;
