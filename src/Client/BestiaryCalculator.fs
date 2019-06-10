@@ -1,4 +1,4 @@
-﻿namespace PathfinderAttackSimulator
+namespace PathfinderAttackSimulator
 
 open System
 open Library
@@ -109,7 +109,7 @@ module BestiaryCalculator =
 
         let attackBoniModifications = 
             modifications 
-            |> Array.map (fun x -> x.BonusAttackRoll.OnHit)
+            |> Array.map (fun x -> x.AttackBonus.OnHit)
             |> Array.groupBy (fun x -> x.BonusType)
             |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                    then bonusArr
@@ -162,7 +162,7 @@ module BestiaryCalculator =
         let totalAttackCritBonus =
             let critSpecificBonus =
                 modifications
-                |> Array.map (fun x -> x.BonusAttackRoll.OnCrit)
+                |> Array.map (fun x -> x.AttackBonus.OnCrit)
                 |> Array.groupBy (fun x -> x.BonusType)
                 |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                        then bonusArr
@@ -523,7 +523,7 @@ module BestiaryCalculator =
             //Start adding up attack boni
             let AttackBoniModifications = 
                 modificationArr 
-                |> Array.map (fun x -> x.BonusAttackRoll.OnHit)
+                |> Array.map (fun x -> x.AttackBonus.OnHit)
                 |> Array.groupBy (fun x -> x.BonusType)
                 |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                        then bonusArr
@@ -547,7 +547,7 @@ module BestiaryCalculator =
 
                 let critSpecificBonus =
                     modifications
-                    |> Array.map (fun x -> x.BonusAttackRoll.OnCrit)
+                    |> Array.map (fun x -> x.AttackBonus.OnCrit)
                     |> Array.groupBy (fun x -> x.BonusType)
                     |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                            then bonusArr

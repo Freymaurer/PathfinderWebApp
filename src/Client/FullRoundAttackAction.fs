@@ -355,7 +355,7 @@ module FullRoundAttackAction =
             ///
             let addBoniToAttack = 
                 modifications 
-                |> Array.map (fun x -> x.BonusAttackRoll.OnHit)
+                |> Array.map (fun x -> x.AttackBonus.OnHit)
                 |> Array.groupBy (fun x -> x.BonusType)
                 |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                        then bonusArr
@@ -378,7 +378,7 @@ module FullRoundAttackAction =
     
             ///
             let getBonusToAttack =
-                char.BAB + weapon.BonusAttackRolls + getUsedModifierToHit + addBoniToAttack + addSizeBonus + iterativeModifier
+                char.BAB + weapon.AttackBonus + getUsedModifierToHit + addBoniToAttack + addSizeBonus + iterativeModifier
     
             ///
             let (attackRoll,critConfirmationRoll) = 
@@ -392,7 +392,7 @@ module FullRoundAttackAction =
             let totalAttackCritBonus =
                 let critSpecificBonus =
                     modifications
-                    |> Array.map (fun x -> x.BonusAttackRoll.OnCrit)
+                    |> Array.map (fun x -> x.AttackBonus.OnCrit)
                     |> Array.groupBy (fun x -> x.BonusType)
                     |> Array.map (fun (header,bonusArr) -> if header <> BonusTypes.Flat 
                                                            then bonusArr
