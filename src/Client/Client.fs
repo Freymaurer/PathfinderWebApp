@@ -537,6 +537,17 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 
     //| _ -> currentModel, Cmd.none
 
+        //    Name = "Multiattack"
+        //    BonusAttacks = createBonusAttacks 0 NoBA All
+        //    BonusAttackRolls = createAttackBoniHitAndCrit 3 Flat 0 Flat
+        //    BonusDamage = createBonus 0 BonusTypes.Flat
+        //    ExtraDamage = createDamageHitAndCrit 0 0 Untyped 0 0 Untyped
+        //    AppliedTo = [|Secondary|], -20
+        //    StatChanges = [||]
+        //    SizeChanges = createSizechange 0 Flat false
+        //    Description = "Gives all secondary attacks +3 on attack rolls, effectively reducing the attack penality for secondary attacks to -2"
+        //    WebInputParameter = [||]
+        //    }
 
 
 let view (model : Model) (dispatch : Msg -> unit) =

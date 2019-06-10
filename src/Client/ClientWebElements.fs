@@ -470,7 +470,7 @@ let weaponStats (w:Weapon) =
     let weapStrings = [|w.Name; (sprintf "%id%i %A" w.Damage.NumberOfDie w.Damage.Die w.Damage.DamageType); (string w.DamageBonus);
                         (sprintf "%id%i %A" w.ExtraDamage.OnHit.NumberOfDie w.ExtraDamage.OnHit.Die w.ExtraDamage.OnHit.DamageType);
                         (sprintf "%id%i %A" w.ExtraDamage.OnCrit.NumberOfDie w.ExtraDamage.OnCrit.Die w.ExtraDamage.OnCrit.DamageType);
-                        (string w.BonusAttackRolls); (sprintf "%i-%i/x%i" (Array.min w.CriticalRange) (Array.max w.CriticalRange) w.CriticalModifier)
+                        (string w.AttackBonus); (sprintf "%i-%i/x%i" (Array.min w.CriticalRange) (Array.max w.CriticalRange) w.CriticalModifier)
                         (string w.Modifier.ToHit); (string w.Modifier.ToDmg); (sprintf "%A, with %A damage multiplier" w.Modifier.MultiplicatorOnDamage.Hand w.Modifier.MultiplicatorOnDamage.Multiplicator)
                         (string w.ManufacturedOrNatural); w.Description |]
 
@@ -547,6 +547,83 @@ let modifictionsInputModal closeDisplay id activeModifiers filteredActiveList (m
 
 let activatemodifictionsInputModal id activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) dispatch =
     ActivateModal (modifictionsInputModal (fun _ -> dispatch CloseModal) id activeModifiers filteredActiveList modiWithVar dispatch)
+
+
+/////////////////////////////////////////////////////////////// Show Active Modification Modal //////////////////////////////////////////////////////
+
+let ModificationStats (m:AttackModification) =
+
+    let prepAppliedTo =
+        let val1 =
+            (fst m.AppliedTo)
+            |> Array.map string
+            |> String.concat ","
+        let val2 =
+            match (snd m.AppliedTo) with
+            | -20 -> ""
+            | _ -> (sprintf "%ix applied" (snd m.AppliedTo))
+        val1 + " " + val2
+
+    let prepStatChanges =
+        let createStatChangeArr (arr: StatChange []) =
+            arr
+            |> Array.map (fun x -> sprintf "%i %A %A" x.AttributeChange x.Attribute x.Bonustype)
+            |> String.concat "; "
+        if m.StatChanges = [||]
+        then "none"
+        else createStatChangeArr m.StatChanges
+
+    let prepSizeChange =
+        let boolDesc =
+            match m.SizeChanges.EffectiveSizeChange with
+            | false -> "change in size"
+            | true -> "change in weapon size category"
+        (sprintf "change size by %i (%A), as a %s" m.SizeChanges.SizeChangeValue m.SizeChanges.SizeChangeBonustype boolDesc)
+
+    let modStrings = [|m.Name; (sprintf "%i %A extra attacks, applied to %A" m.BonusAttacks.NumberOfBonusAttacks m.BonusAttacks.TypeOfBonusAttacks m.BonusAttacks.WeaponTypeWithBonusAttacks);
+                        (sprintf "%i %A" m.AttackBonus.OnHit.Value m.AttackBonus.OnHit.BonusType); (sprintf "%i %A" m.AttackBonus.OnCrit.Value m.AttackBonus.OnCrit.BonusType);
+                        (sprintf "%i %A" m.BonusDamage.Value m.BonusDamage.BonusType);
+                        (sprintf "%id%i %A" m.ExtraDamage.OnHit.NumberOfDie m.ExtraDamage.OnHit.Die m.ExtraDamage.OnHit.DamageType);
+                        (sprintf "%id%i %A" m.ExtraDamage.OnCrit.NumberOfDie m.ExtraDamage.OnCrit.Die m.ExtraDamage.OnCrit.DamageType);
+                        prepAppliedTo; prepStatChanges; prepSizeChange;
+                        m.Description|]
+
+    let descStrings = [|"Modification Name"; "Bonus Attacks"; "Attack Bonus on normal hit"; "Attack Bonus on crit confirm roll"; "Damage Bonus"; "Extra Damage"; 
+                        "Extra Damage on Crit"; "Modification is applied to"; "Ability Score Changes"; "Size Changes"; "Description"|]
+
+    let combinedArr = Array.zip descStrings modStrings
+
+    Container.container [ Container.IsFluid ]
+                        (combinedArr
+                        |> Array.map (fun (desc,value) -> Panel.panel [ ]
+                                                                      [ Columns.columns [ ]
+                                                                                        [ Column.column [ Column.Modifiers [ Modifier.IsPulledLeft ] ] [ str desc ]
+                                                                                          Column.column [ Column.Modifiers [ Modifier.IsPulledRight ] ] [ str value ]
+                                                                                        ] 
+                                                                      ]
+                                      )
+                        |> List.ofArray
+                        )
+
+
+let displayActiveModification modification (dispatch : Msg -> unit)=
+    Modal.modal [ Modal.IsActive true
+                  Modal.Props [ (onEnter CloseModal dispatch) ]
+                ]
+        [ Modal.background [ Props [ OnClick (fun _ -> dispatch CloseModal) ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.head [ ]
+                [ Modal.Card.title [ ]
+                    [ str modification.Name ]
+                  Delete.delete [ Delete.OnClick (fun _ -> dispatch CloseModal)] [ ] ]
+              Modal.Card.body [ ]
+                              [ ModificationStats modification ]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
+                                [ str "Cancel" ] ] ] ]            
+
+let activatedisplayActiveModification modification dispatch =
+    ActivateModal (displayActiveModification modification dispatch)
 
 ///////////////////////////////////////////////////////// Attack Calculator Card ////////////////////////////////////////////////////////
 
@@ -680,10 +757,19 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
             (relatedActiveModifier.ActiveWeapons
             |> List.map (fun (x,wType,y) -> singleElement x wType y))
 
-    let stringOfActiveModifications =
-        relatedActiveModifier.ActiveModifications
-        |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
-        |> fun x -> x.Trim([|',';' '|])
+    let activeModificationElement =
+        let singleElement (*activeID*) modification =
+            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveModification modification dispatch)) ]
+                      Tag.Color Color.IsWhiteTer]
+                    [str modification.Name ] 
+        div []
+            (relatedActiveModifier.ActiveModifications
+            |> List.map (fun y -> singleElement y) )
+
+    //let stringOfActiveModifications =
+    //    relatedActiveModifier.ActiveModifications
+    //    |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
+    //    |> fun x -> x.Trim([|',';' '|])
     let dropdownButtonSize (sizeStr:string) =
         Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateTabActiveModifierSize (id,sizeStr))) ]
                              ]
@@ -744,7 +830,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                  ]
                                                p [ Props.Id (sprintf "OutputModifications%A" id) ]
                                                  [ Level.level [ ]
-                                                               [ str stringOfActiveModifications
+                                                               [ activeModificationElement
                                                                  Button.button [ Button.IsOutlined
                                                                                  Button.OnClick (fun _ -> dispatch (ResetActiveModifications id))
                                                                                  Button.Props [ Tooltip.dataTooltip "click here to reset all selected modifications" ]
