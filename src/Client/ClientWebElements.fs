@@ -225,14 +225,14 @@ let charStats (char:CharacterStats) =
                         )
 
 
-let displayActivechar char (dispatch : Msg -> unit)=
+let displayActivechar (char:CharacterStats) (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                 ]
         [ Modal.background [ Props [ OnClick (fun _ -> dispatch CloseModal) ] ] [ ]
           Modal.Card.card [ ]
             [ Modal.Card.head [ ]
                 [ Modal.Card.title [ ]
-                    [ str "Weapon Creator" ]
+                    [ str char.CharacterName ]
                   Delete.delete [ Delete.OnClick (fun _ -> dispatch CloseModal)] [ ] ]
               Modal.Card.body [ ]
                               [ charStats char ]
@@ -492,7 +492,7 @@ let weaponStats (w:Weapon) =
                         )
 
 
-let displayActiveWeapon char (dispatch : Msg -> unit)=
+let displayActiveWeapon (weapon:Weapon) (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                   Modal.Props [ (onEnter CloseModal dispatch) ]
                 ]
@@ -500,10 +500,10 @@ let displayActiveWeapon char (dispatch : Msg -> unit)=
           Modal.Card.card [ ]
             [ Modal.Card.head [ ]
                 [ Modal.Card.title [ ]
-                    [ str "Weapon Creator" ]
+                    [ str weapon.Name ]
                   Delete.delete [ Delete.OnClick (fun _ -> dispatch CloseModal)] [ ] ]
               Modal.Card.body [ ]
-                              [ weaponStats char ]
+                              [ weaponStats weapon ]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
                                 [ str "Cancel" ] ] ] ]            
@@ -541,7 +541,7 @@ let modifictionsInputModal closeDisplay id activeModifiers filteredActiveList (m
                                   Button.OnClick (fun _ -> dispatch (UseModalInputForModificationVariables (id,activeModifiers,filteredActiveList,modiWithVar,dispatch))
                                                   )
                                 ]
-                                [ str "Add Character" ]
+                                [ str "Apply Modification" ]
                   Button.button [ Button.OnClick closeDisplay ]
                                 [ str "Cancel" ] ] ] ]
 
@@ -766,10 +766,6 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
             (relatedActiveModifier.ActiveModifications
             |> List.map (fun y -> singleElement y) )
 
-    //let stringOfActiveModifications =
-    //    relatedActiveModifier.ActiveModifications
-    //    |> List.fold (fun arr ele -> ele.Name + ", " + arr) ""
-    //    |> fun x -> x.Trim([|',';' '|])
     let dropdownButtonSize (sizeStr:string) =
         Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateTabActiveModifierSize (id,sizeStr))) ]
                              ]
@@ -855,7 +851,9 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                                     span [] [str "Calculate Standard Attack"
                                                                                 ]
                                                                   ]
-                                                    Button.button [ Button.Color IsInfo
+                                                  ]
+                                       Level.item []
+                                                  [ Button.button [ Button.Color IsInfo
                                                                     Button.IsInverted
                                                                     Button.OnClick (fun _ -> dispatch (CalculateFullRoundAttackAction id)
                                                                                    )
@@ -864,7 +862,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                                               [ i [ClassName "fas fa-dice-d20"] [] ]
                                                                     span [] [str "Calculate Full Round Attack Action"
                                                                                 ]
-                                                                  ] 
+                                                                  ]
                                                   ]
                                      ]
                          Notification.notification [ Notification.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left)] ]
