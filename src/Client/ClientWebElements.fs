@@ -210,17 +210,17 @@ let activateAddCharacterDispatch dispatch =
 let charStats (char:CharacterStats) =
 
     let charStrings = [|char.CharacterName; string char.BAB; string char.Strength; string char.Dexterity; string char.Constitution;
-                        string char.Intelligence; string char.Wisdom; string char.Charisma|]
-    let descStrings = [|"CharacterName"; "BAB"; "Strength"; "Dexterity"; "Constitution"; "Intelligence"; "Wisdom"; "Charisma"|]
+                        string char.Intelligence; string char.Wisdom; string char.Charisma; char.CharacterDescription|]
+    let descStrings = [|"Character Name"; "BAB"; "Strength"; "Dexterity"; "Constitution"; "Intelligence"; "Wisdom"; "Charisma"; "Character Description"|]
     let combinedArr = Array.zip descStrings charStrings
 
     Container.container [ Container.IsFluid ]
                         (combinedArr
                         |> Array.map (fun (desc,value) -> Panel.panel [ ]
-                                                                      [ Level.level [ ]
-                                                                                    [ Level.left [] [ str desc ]
-                                                                                      Level.right [] [ str value ]
-                                                                                    ] 
+                                                                      [ Columns.columns [ ]
+                                                                                        [ Column.column [ Column.Modifiers [ Modifier.IsPulledLeft ] ] [ str desc ]
+                                                                                          Column.column [ Column.Modifiers [ Modifier.IsPulledRight ] ] [ str value ]
+                                                                                        ] 
                                                                       ]
                                       )
                         |> List.ofArray
@@ -480,9 +480,16 @@ let weaponStats (w:Weapon) =
                         "Crit Statistics"; "Modifier to hit"; "Modifier to Damage"; "Handling and Dmg - Multiplier"; "Manufactured or Natural"; "Description"|]
 
     let combinedArr = Array.zip descStrings weapStrings
+    let referenceZero = [|("Bonus Damage","0");
+                          ("Extra Damage","0d0 Untyped");
+                          ("Extra Damage on Crit","0d0 Untyped")
+                          ("Attack Bonus","0")|]
+    let filteredAttributes =
+        combinedArr
+        |> Array.filter (fun x -> (Array.contains x referenceZero) = false)
 
     Container.container [ Container.IsFluid ]
-                        (combinedArr
+                        (filteredAttributes
                         |> Array.map (fun (desc,value) -> Panel.panel [ ]
                                                                       [ Columns.columns [ ]
                                                                                         [ Column.column [ Column.Modifiers [ Modifier.IsPulledLeft ] ] [ str desc ]
@@ -556,9 +563,9 @@ let activatemodifictionsInputModal id activeModifiers activeIDCollector filtered
 
 /////////////////////////////////////////////////////////////// Show Active Modification Modal //////////////////////////////////////////////////////
 
-let ModificationStats (m:AttackModification) =
+let ModificationStats (modi:AttackModification) =
 
-    let prepAppliedTo =
+    let prepAppliedTo m =
         let val1 =
             (fst m.AppliedTo)
             |> Array.map string
@@ -569,7 +576,7 @@ let ModificationStats (m:AttackModification) =
             | _ -> (sprintf "%ix applied" (snd m.AppliedTo))
         val1 + " " + val2
 
-    let prepStatChanges =
+    let prepStatChanges m =
         let createStatChangeArr (arr: StatChange []) =
             arr
             |> Array.map (fun x -> sprintf "%i %A %A" x.AttributeChange x.Attribute x.Bonustype)
@@ -578,28 +585,41 @@ let ModificationStats (m:AttackModification) =
         then "none"
         else createStatChangeArr m.StatChanges
 
-    let prepSizeChange =
+    let prepSizeChange m =
         let boolDesc =
             match m.SizeChanges.EffectiveSizeChange with
             | false -> "change in size"
             | true -> "change in weapon size category"
         (sprintf "change size by %i (%A), as a %s" m.SizeChanges.SizeChangeValue m.SizeChanges.SizeChangeBonustype boolDesc)
 
-    let modStrings = [|m.Name; (sprintf "%i %A extra attacks, applied to %A" m.BonusAttacks.NumberOfBonusAttacks m.BonusAttacks.TypeOfBonusAttacks m.BonusAttacks.WeaponTypeWithBonusAttacks);
+    let modStrings m = [|m.Name; (sprintf "%i %A extra attacks, applied to %A" m.BonusAttacks.NumberOfBonusAttacks m.BonusAttacks.TypeOfBonusAttacks m.BonusAttacks.WeaponTypeWithBonusAttacks);
                         (sprintf "%i %A" m.AttackBonus.OnHit.Value m.AttackBonus.OnHit.BonusType); (sprintf "%i %A" m.AttackBonus.OnCrit.Value m.AttackBonus.OnCrit.BonusType);
                         (sprintf "%i %A" m.BonusDamage.Value m.BonusDamage.BonusType);
                         (sprintf "%id%i %A" m.ExtraDamage.OnHit.NumberOfDie m.ExtraDamage.OnHit.Die m.ExtraDamage.OnHit.DamageType);
                         (sprintf "%id%i %A" m.ExtraDamage.OnCrit.NumberOfDie m.ExtraDamage.OnCrit.Die m.ExtraDamage.OnCrit.DamageType);
-                        prepAppliedTo; prepStatChanges; prepSizeChange;
+                        prepAppliedTo m; prepStatChanges m; prepSizeChange m;
                         m.Description|]
 
     let descStrings = [|"Modification Name"; "Bonus Attacks"; "Attack Bonus on normal hit"; "Attack Bonus on crit confirm roll"; "Damage Bonus"; "Extra Damage"; 
                         "Extra Damage on Crit"; "Modification is applied to"; "Ability Score Changes"; "Size Changes"; "Description"|]
 
-    let combinedArr = Array.zip descStrings modStrings
+    let combinedArr = Array.zip descStrings (modStrings modi)
+    let referenceZeroMod = 
+        [|("Modification Name", "");
+          ("Bonus Attacks", "0 NoBA extra attacks, applied to All");
+          ("Attack Bonus on normal hit", "0 Flat");
+          ("Attack Bonus on crit confirm roll", "0 Flat");
+          ("Damage Bonus", "0 Flat"); ("Extra Damage", "0d0 Untyped");
+          ("Extra Damage on Crit", "0d0 Untyped");
+          ("Modification is applied to", "All "); ("Ability Score Changes", "none");
+          ("Size Changes", "change size by 0 (Flat), as a change in size");
+          ("Description", "")|]
+    let filteredAttributes =
+        combinedArr
+        |> Array.filter (fun x -> (Array.contains x referenceZeroMod) = false)
 
     Container.container [ Container.IsFluid ]
-                        (combinedArr
+                        (filteredAttributes
                         |> Array.map (fun (desc,value) -> Panel.panel [ ]
                                                                       [ Columns.columns [ ]
                                                                                         [ Column.column [ Column.Modifiers [ Modifier.IsPulledLeft ] ] [ str desc ]

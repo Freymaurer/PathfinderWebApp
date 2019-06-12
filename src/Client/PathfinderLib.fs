@@ -1087,7 +1087,7 @@ module Library =
                 CriticalModifier    = 2
                 Modifier            = createUsedModifier Strength Strength OneHanded 1.
                 ManufacturedOrNatural = Manufactured
-                Description         = ""
+                Description         = "Psst! The WIZARD told me this is a placeholder!"
                 }
     
         let EmptyModification = {
@@ -1099,7 +1099,7 @@ module Library =
             AppliedTo = [|All|], -20
             StatChanges = [||]
             SizeChanges = createSizechange 0 Flat false
-            Description = ""
+            Description = "Program: Modification does not show anything. - User: Alright then, keep your secrets!"
             WebInputParameter = [||]
             }
 
@@ -1107,15 +1107,15 @@ module Library =
         let EmptyChar = { 
                 CharacterName = "Here will be your character"
                 BAB = 0
-                Strength = 0
-                Dexterity = 0
-                Constitution = 0
-                Intelligence = 0
-                Wisdom = 0
-                Charisma = 0
+                Strength = 9
+                Dexterity = 8
+                Constitution = 12
+                Intelligence = 6
+                Wisdom = 6
+                Charisma = 7
                 CasterLevel1 = 0
                 CasterLevel2 = 0
-                CharacterDescription = ""
+                CharacterDescription = "The WIZARD does not want you to see his might, so he disguises as commoner!"
                 }
     
         //
