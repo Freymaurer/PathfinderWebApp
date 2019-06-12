@@ -70,7 +70,7 @@ type ActiveModifiers = {
     ActiveCharacter     : CharacterStats
     ActiveSize          : SizeType
     ActiveWeapons       : (int * WeaponType * Weapon) list
-    ActiveModifications : AttackModification list
+    ActiveModifications : (int * AttackModification) list
     ActiveTabWeaponType : WeaponType
     }
 
@@ -106,7 +106,9 @@ type Msg =
 | UpdateTabActiveModifierSize of int * string
 | UpdateTabActiveModifierWeaponType of int * WeaponType
 | DeleteSearchResultFromActiveArray of int * string
-| ResetActiveWeapon of int
+| RemoveActiveWeapon of int * int
+| ResetActiveWeapons of int
+| RemoveActiveModification of int * int
 | ResetActiveModifications of int
 | CloseTab of int
 | ActivateModal of ReactElement
@@ -114,7 +116,7 @@ type Msg =
 | UpdateModalInputList of string * (int*string)
 | AddModalInputToCharacterArray
 | AddModalInputToWeaponArray
-| UseModalInputForModificationVariables of (int * ActiveModifiers * AttackModification list * (string [] -> AttackModification) * (Msg -> unit))
+| UseModalInputForModificationVariables of (int * TabActiveIdCounterCollector * ActiveModifiers * (int * AttackModification) list * (string [] -> AttackModification) * (Msg -> unit))
 
 let createActivateSearchResultButton (searchForName:string) msg dispatch =
     Button.button [ Button.Props [ ]
@@ -492,7 +494,7 @@ let weaponStats (w:Weapon) =
                         )
 
 
-let displayActiveWeapon (weapon:Weapon) (dispatch : Msg -> unit)=
+let displayActiveWeapon tabID weaponID (weapon:Weapon) (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                   Modal.Props [ (onEnter CloseModal dispatch) ]
                 ]
@@ -506,10 +508,13 @@ let displayActiveWeapon (weapon:Weapon) (dispatch : Msg -> unit)=
                               [ weaponStats weapon ]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
-                                [ str "Cancel" ] ] ] ]            
+                                [ str "Cancel" ]
+                  Button.button [ Button.OnClick (fun _ -> dispatch (RemoveActiveWeapon (tabID,weaponID)))
+                                  Button.Color IsDanger ]
+                                [ str "Remove From Active Array" ] ] ] ]            
 
-let activatedisplayActiveWeapon weapon dispatch =
-    ActivateModal (displayActiveWeapon weapon dispatch)
+let activatedisplayActiveWeapon tabID weaponID weapon dispatch =
+    ActivateModal (displayActiveWeapon tabID weaponID weapon dispatch)
 
 ////////////////////////////////////////////////////////// Modal for Modifications that need further input parameters ////////////////////////
 
@@ -524,7 +529,7 @@ let modifictionsInputModalContent (modiWithVar:(string [] -> AttackModification)
 
 
 // add character modal
-let modifictionsInputModal closeDisplay id activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) (dispatch : Msg -> unit)=
+let modifictionsInputModal closeDisplay id activeIDCollector activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                   Modal.Props [ (onEnter AddModalInputToCharacterArray dispatch) ]
                 ]
@@ -535,18 +540,18 @@ let modifictionsInputModal closeDisplay id activeModifiers filteredActiveList (m
                     [ str "Add Modification Info" ]
                   Delete.delete [ Delete.OnClick closeDisplay ] [ ] ]
               Modal.Card.body [ ]
-                              [ modifictionsInputModalContent modiWithVar dispatch]
+                              [ modifictionsInputModalContent modiWithVar dispatch ]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.Color IsSuccess
-                                  Button.OnClick (fun _ -> dispatch (UseModalInputForModificationVariables (id,activeModifiers,filteredActiveList,modiWithVar,dispatch))
+                                  Button.OnClick (fun _ -> dispatch (UseModalInputForModificationVariables (id,activeIDCollector,activeModifiers,filteredActiveList,modiWithVar,dispatch))
                                                   )
                                 ]
                                 [ str "Apply Modification" ]
                   Button.button [ Button.OnClick closeDisplay ]
                                 [ str "Cancel" ] ] ] ]
 
-let activatemodifictionsInputModal id activeModifiers filteredActiveList (modiWithVar:(string [] -> AttackModification)) dispatch =
-    ActivateModal (modifictionsInputModal (fun _ -> dispatch CloseModal) id activeModifiers filteredActiveList modiWithVar dispatch)
+let activatemodifictionsInputModal id activeModifiers activeIDCollector filteredActiveList (modiWithVar:(string [] -> AttackModification)) dispatch =
+    ActivateModal (modifictionsInputModal (fun _ -> dispatch CloseModal) id activeIDCollector activeModifiers filteredActiveList modiWithVar dispatch)
 
 
 /////////////////////////////////////////////////////////////// Show Active Modification Modal //////////////////////////////////////////////////////
@@ -606,7 +611,7 @@ let ModificationStats (m:AttackModification) =
                         )
 
 
-let displayActiveModification modification (dispatch : Msg -> unit)=
+let displayActiveModification tabID modiID modification (dispatch : Msg -> unit)=
     Modal.modal [ Modal.IsActive true
                   Modal.Props [ (onEnter CloseModal dispatch) ]
                 ]
@@ -620,10 +625,13 @@ let displayActiveModification modification (dispatch : Msg -> unit)=
                               [ ModificationStats modification ]
               Modal.Card.foot [ ]
                 [ Button.button [ Button.OnClick (fun _ -> dispatch CloseModal) ]
-                                [ str "Cancel" ] ] ] ]            
+                                [ str "Cancel" ]
+                  Button.button [ Button.OnClick (fun _ -> dispatch (RemoveActiveModification (tabID,modiID)))
+                                  Button.Color IsDanger ]
+                                [ str "Remove from Active Array"] ] ] ]      
 
-let activatedisplayActiveModification modification dispatch =
-    ActivateModal (displayActiveModification modification dispatch)
+let activatedisplayActiveModification tabID modiID modification dispatch =
+    ActivateModal (displayActiveModification tabID modiID modification dispatch)
 
 ///////////////////////////////////////////////////////// Attack Calculator Card ////////////////////////////////////////////////////////
 
@@ -740,6 +748,7 @@ let searchBarTab (dispatch : Msg -> unit) (id:int) (tabCategory:string) (specifi
                     ]
 
 let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchResult) (specificCalculationResults:ReactElement []) (relatedActiveModifier:ActiveModifiers) =
+
     let specificCalculationResultsFinalized =
         (if Array.isEmpty specificCalculationResults
         then [|str "Here will be your result! Try it out!"|]
@@ -748,23 +757,25 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
         |> List.ofArray
 
     let activeWeaponElement =
-        let singleElement activeID wType weapon =
-            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveWeapon weapon dispatch)) ]
+        let singleElement wID wType weapon =
+            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveWeapon id wID weapon dispatch)) ]
                       Tag.Color Color.IsWhiteTer]
                     [str (weapon.Name + ", " + string wType) ]
             
         div []
             (relatedActiveModifier.ActiveWeapons
+            |> List.rev
             |> List.map (fun (x,wType,y) -> singleElement x wType y))
 
     let activeModificationElement =
-        let singleElement (*activeID*) modification =
-            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveModification modification dispatch)) ]
+        let singleElement modiID modification =
+            Tag.tag [ Tag.Props [ Props.OnClick (fun _ -> dispatch (activatedisplayActiveModification id modiID modification dispatch)) ]
                       Tag.Color Color.IsWhiteTer]
                     [str modification.Name ] 
         div []
             (relatedActiveModifier.ActiveModifications
-            |> List.map (fun y -> singleElement y) )
+            |> List.rev
+            |> List.map (fun (id,y) -> singleElement id y) )
 
     let dropdownButtonSize (sizeStr:string) =
         Dropdown.Item.a [ Dropdown.Item.Props [ Props.OnClick (fun _ -> dispatch (UpdateTabActiveModifierSize (id,sizeStr))) ]
@@ -816,7 +827,7 @@ let attackCalculatorCard (dispatch : Msg -> unit) (id:int) (searchResult:SearchR
                                                  [ Level.level [ ]
                                                                [ activeWeaponElement
                                                                  Button.button [ Button.IsOutlined
-                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveWeapon id))
+                                                                                 Button.OnClick (fun _ -> dispatch (ResetActiveWeapons id))
                                                                                  Button.Props [ Tooltip.dataTooltip "click here to reset all selected weapons" ]
                                                                                  Button.CustomClass (Tooltip.ClassName + " " + Tooltip.IsTooltipLeft)
                                                                                  Button.Modifiers [ Modifier.TextSize (Screen.All,TextSize.Is7) ]
