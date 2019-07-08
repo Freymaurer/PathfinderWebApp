@@ -170,15 +170,15 @@ let inputPanel modalID description placeholder inputID (dispatch : Msg -> unit) 
 // content for add character modal
 let addCharacterModalContent (dispatch : Msg -> unit) =
     Panel.panel [ ]
-                [ inputPanel "addCharacter" "Character Name:" ".. best character name" 1 dispatch
-                  inputPanel "addCharacter" "Base Attack Bonus:"  ".. e.g. 4" 2 dispatch
-                  inputPanel "addCharacter" "Strength:" ".. ability score, e.g. 18" 3 dispatch
-                  inputPanel "addCharacter" "Dexterity:" ".. ability score, e.g. 18" 4 dispatch
-                  inputPanel "addCharacter" "Constitution:" ".. ability score, e.g. 18" 5 dispatch
-                  inputPanel "addCharacter" "Intelligence:" ".. ability score, e.g. 18" 6 dispatch
-                  inputPanel "addCharacter" "Wisdom:" ".. ability score, e.g. 18" 7 dispatch
-                  inputPanel "addCharacter" "Charisma:" ".. ability score, e.g. 18" 8 dispatch
-                  inputPanel "addCharacter" "Character Description:" ".. description" 9 dispatch]
+                [ inputPanel "addCharacter" "Character Name:" ".. best character name" 0 dispatch
+                  inputPanel "addCharacter" "Base Attack Bonus:"  ".. e.g. 4" 1 dispatch
+                  inputPanel "addCharacter" "Strength:" ".. ability score, e.g. 18" 2 dispatch
+                  inputPanel "addCharacter" "Dexterity:" ".. ability score, e.g. 18" 3 dispatch
+                  inputPanel "addCharacter" "Constitution:" ".. ability score, e.g. 18" 4 dispatch
+                  inputPanel "addCharacter" "Intelligence:" ".. ability score, e.g. 18" 5 dispatch
+                  inputPanel "addCharacter" "Wisdom:" ".. ability score, e.g. 18" 6 dispatch
+                  inputPanel "addCharacter" "Charisma:" ".. ability score, e.g. 18" 7 dispatch
+                  inputPanel "addCharacter" "Character Description:" ".. description" 8 dispatch]
 
 
 // add character modal

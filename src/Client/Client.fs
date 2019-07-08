@@ -150,7 +150,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
              match intForWhichTab with
              | 1 -> ((searchForCharacters currentModel.CharacterArray searchInput) |> Array.map (fun x -> createSubSearchResult x.CharacterName x.CharacterDescription) )
              | 2 -> ((searchForWeapons currentModel.WeaponArray searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
-             | 3 -> ((searchForModifications CompleteModificationArr searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) )
+             | 3 -> ((searchForModifications currentModel.ModificationArray searchInput) |> Array.map (fun x -> createSubSearchResult x.Name x.Description) ) //CHANGED TO currentModel.ModificationArray FROM CompleteModificationArr
              | _ -> failwith "unknown case, you should not get this 004"                                                                                                                                
          let (oldValue,heavyCalculation) =
             (List.tryFind (fun (cardId,searchBarList) -> cardId = id) currentModel.TabSearchResultList)
@@ -323,7 +323,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             newActiveArray,newActiveModifierList,newSearchResult
         let rmModificationFromArr (str:string)=
             let newActiveArray =
-                CompleteModificationArr
+                currentModel.ModificationArray //CHANGED TO currentModel.ModificationArray FROM CompleteModificationArr
                 |> Array.filter (fun x -> x.Name <> str)
             let newActiveModifierList =
                 currentModel.TabActiveModifierList
@@ -512,13 +512,26 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let (modalIDOfInterest,modalInputOfInterest) =
             currentModel.ModalInputList
             |> List.tryFind (fun (x,y) -> x = "addCharacter")
-            |> fun x -> if x.IsSome then x.Value else failwith "Not all input fields are filled for character creation!"
+            |> fun x -> if x.IsSome then x.Value else "",[||]
+        let tryFindAndFill orderID =
+            modalInputOfInterest
+            |> Array.tryFind (fun (index,value) -> index = orderID )
+            |> fun x -> if x.IsSome then snd x.Value else match orderID with
+                                                          | 0 -> "The Best Example Character"
+                                                          | 1 -> "0"
+                                                          | 2 -> "10"
+                                                          | 3 -> "10"
+                                                          | 4 -> "10"
+                                                          | 5 -> "10"
+                                                          | 6 -> "10"
+                                                          | 7 -> "10"
+                                                          | 8 -> "The Best Example Character Description"
+                                                          | _ -> failwith "Wrong order id for input for character creation modal."
         let characterStat =
             modalInputOfInterest
-            |> fun x -> if x.Length <> 9 then failwith "Not all input fields are filled for character creation!" else x
             |> Array.sortBy fst
             |> Array.map snd
-            |> fun x -> createCharacterStats x.[0] (int x.[1]) (int x.[2]) (int x.[3]) (int x.[4]) (int x.[5]) (int x.[6]) (int x.[7]) 0 0 x.[8]
+            |> fun x -> createCharacterStats (tryFindAndFill 0) (int (tryFindAndFill 1)) (int (tryFindAndFill 2)) (int (tryFindAndFill 3)) (int (tryFindAndFill 4)) (int (tryFindAndFill 5)) (int (tryFindAndFill 6)) (int (tryFindAndFill 7)) 0 0 (tryFindAndFill 8)
         let newModel = {
             currentModel with
                 CharacterArray = Array.append currentModel.CharacterArray [|characterStat|]
